@@ -2,12 +2,15 @@ use macroquad::prelude::*;
 
 const RATIO_W_H: f32 = 16. / 9.;
 
-const PLAYER_SPEED: f32 = 0.01;
-const BALL_SPEED: f32 = 0.01;
+const BALL_SPEED: f32 = 1.75;
 const PLAYER_RADIUS: f32 = 0.025;
-const BALL_RADIUS: f32 = 0.005;
+const BALL_RADIUS: f32 = 0.01;
 const WALL_SIZE: f32 = 0.02;
+
+const SPEED_STEPS: i32 = 10;
+const PLAYER_MAX_SPEED: f32 = 0.75;
 const PLAYER_RELOAD: f32 = 0.5;
+const DASH_LEN: f32 = 0.02;
 
 struct Screen {
     x: f32,
@@ -16,21 +19,83 @@ struct Screen {
     height: f32,
 }
 
-struct Player {
+struct Speed {
+    x: i32,
+    y: i32,
+}
+
+struct Body {
     position: Vec2,
-    hiding: bool,
+    sight: Vec2,
+    speed: Speed,
+}
+
+impl Body {
+    fn update(&mut self, move_direction: (i32, i32), sight: Vec2, dt: f32) {
+        self.sight = sight.normalize();
+        self.speed.x += 2 * move_direction.0;
+        self.speed.y += 2 * move_direction.1;
+
+        match self.speed.x.cmp(&0) {
+            std::cmp::Ordering::Less => self.speed.x += 1,
+            std::cmp::Ordering::Greater => self.speed.x -= 1,
+            _ => {}
+        }
+        self.speed.x = clamp(self.speed.x, -SPEED_STEPS, SPEED_STEPS);
+        match self.speed.y.cmp(&0) {
+            std::cmp::Ordering::Less => self.speed.y += 1,
+            std::cmp::Ordering::Greater => self.speed.y -= 1,
+            _ => {}
+        }
+        self.speed.y = clamp(self.speed.y, -SPEED_STEPS, SPEED_STEPS);
+        self.position.x += PLAYER_MAX_SPEED * (self.speed.x as f32) / (SPEED_STEPS as f32) * dt;
+        self.position.y += PLAYER_MAX_SPEED * (self.speed.y as f32) / (SPEED_STEPS as f32) * dt;
+
+        // wall collision
+        self.position.x = clamp(
+            self.position.x,
+            WALL_SIZE + PLAYER_RADIUS,
+            RATIO_W_H - WALL_SIZE - PLAYER_RADIUS,
+        );
+        self.position.y = clamp(
+            self.position.y,
+            WALL_SIZE + PLAYER_RADIUS,
+            1. - WALL_SIZE - PLAYER_RADIUS,
+        );
+    }
+
+    fn collide(&mut self, other: &mut Body) {
+        let diff = self.position - other.position;
+        let penetration = PLAYER_RADIUS - (diff.length() / 2.);
+        if penetration > 0. {
+            let shift = diff.normalize() * penetration;
+            self.position += shift;
+            other.position -= shift;
+        }
+    }
+}
+
+struct Player {
+    body: Body,
+    visible: bool,
     reload: f32,
 }
 
 struct Ball {
     position: Vec2,
     direction: Vec2,
-    from_player: bool,
+}
+
+struct Enemy {
+    body: Body,
+    reload: f32,
+    slash: i8,
 }
 
 struct State {
     player: Player,
     balls: Vec<Ball>,
+    enemies: Vec<Enemy>,
 }
 
 /// Gets screen size from window size for the defined ratio
@@ -58,11 +123,27 @@ fn get_screen_size(width: f32, height: f32) -> Screen {
 async fn main() {
     let mut state = State {
         player: Player {
-            position: Vec2 { x: 0.1, y: 0.5 },
-            hiding: false,
+            body: Body {
+                position: Vec2 { x: 0.1, y: 0.5 },
+                speed: Speed { x: 0, y: 0 },
+                sight: Vec2 { x: 1., y: 0. },
+            },
+            visible: false,
             reload: 0.,
         },
         balls: vec![],
+        enemies: vec![Enemy {
+            body: Body {
+                position: Vec2 {
+                    x: RATIO_W_H / 2.,
+                    y: 0.5,
+                },
+                speed: Speed { x: 0, y: 0 },
+                sight: Vec2 { x: 1., y: 0. },
+            },
+            reload: 0.,
+            slash: 0,
+        }],
     };
     loop {
         let dt = get_frame_time();
@@ -81,30 +162,36 @@ async fn main() {
 
 /// This function changes state using the controls
 fn change_state(state: &mut State, screen: &Screen, dt: f32) {
+    let mut move_direction = (0, 0);
     if is_key_down(KeyCode::W) {
-        state.player.position.y -= PLAYER_SPEED;
+        move_direction.1 -= 1;
     }
     if is_key_down(KeyCode::S) {
-        state.player.position.y += PLAYER_SPEED;
+        move_direction.1 += 1;
     }
     if is_key_down(KeyCode::A) {
-        state.player.position.x -= PLAYER_SPEED;
+        move_direction.0 -= 1;
     }
     if is_key_down(KeyCode::D) {
-        state.player.position.x += PLAYER_SPEED;
+        move_direction.0 += 1;
     }
+    let (x_mouse, y_mouse) = {
+        let (x_m, y_m) = mouse_position();
+        (
+            clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
+            clamp((y_m - screen.y) / screen.height, 0., 1.),
+        )
+    };
+    let x_direction = x_mouse - state.player.body.position.x;
+    let y_direction = y_mouse - state.player.body.position.y;
 
-    // wall collision
-    state.player.position.x = clamp(
-        state.player.position.x,
-        WALL_SIZE + PLAYER_RADIUS,
-        RATIO_W_H - WALL_SIZE - PLAYER_RADIUS,
-    );
-    state.player.position.y = clamp(
-        state.player.position.y,
-        WALL_SIZE + PLAYER_RADIUS,
-        1. - WALL_SIZE - PLAYER_RADIUS,
-    );
+    let direction = Vec2 {
+        x: x_direction,
+        y: y_direction,
+    }
+    .normalize_or_zero();
+
+    state.player.body.update(move_direction, direction, dt);
 
     state.balls = state
         .balls
@@ -116,38 +203,67 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
                 && ball.position.y <= 1. - WALL_SIZE - PLAYER_RADIUS
         })
         .map(|ball| Ball {
-            position: ball.position + ball.direction * BALL_SPEED,
+            position: ball.position + ball.direction * BALL_SPEED * dt,
             direction: ball.direction,
-            from_player: ball.from_player,
         })
         .collect();
 
-    if is_key_pressed(KeyCode::Space) {
-        state.player.hiding = !state.player.hiding;
+    let mut enemy_collisions = Vec::new();
+    for enemy in &mut state.enemies {
+        let mut move_direction = (0, 0);
+        if state.player.visible {
+            if enemy.body.position.y > state.player.body.position.y {
+                move_direction.1 -= 1;
+            } else if enemy.body.position.y < state.player.body.position.y {
+                move_direction.1 += 1;
+            }
+            if enemy.body.position.x > state.player.body.position.x {
+                move_direction.0 -= 1;
+            } else if enemy.body.position.x < state.player.body.position.x {
+                move_direction.0 += 1;
+            }
+        }
+        enemy.body.update(
+            move_direction,
+            state.player.body.position - enemy.body.position,
+            dt,
+        );
+        enemy.body.collide(&mut state.player.body);
+        if enemy.body.position.distance(state.player.body.position) < 2. * PLAYER_RADIUS + DASH_LEN
+            && enemy.reload == 0.
+        {
+            enemy.reload = PLAYER_RELOAD;
+            enemy.slash = 5;
+            // FIXME: add damage
+        } else {
+            enemy.slash = clamp(enemy.slash - 1, 0, 5);
+            enemy.reload = clamp(enemy.reload - dt, 0., PLAYER_RELOAD);
+        }
+        let mut ball_collisions = Vec::new();
+        for ball in &state.balls {
+            if enemy.body.position.distance(ball.position) < BALL_RADIUS + PLAYER_RADIUS {
+                enemy_collisions.push(enemy.body.position);
+                ball_collisions.push(ball.position);
+            }
+        }
+        state
+            .balls
+            .retain(|ball| !ball_collisions.contains(&ball.position));
     }
-    if is_mouse_button_down(MouseButton::Left) && !state.player.hiding && state.player.reload == 0.
+    state
+        .enemies
+        .retain(|enemy| !enemy_collisions.contains(&enemy.body.position));
+
+    if is_key_pressed(KeyCode::Space) {
+        state.player.visible = !state.player.visible;
+    }
+    if is_mouse_button_down(MouseButton::Left) && state.player.visible && state.player.reload == 0.
     {
         state.player.reload = PLAYER_RELOAD;
-        let (x_mouse, y_mouse) = {
-            let (x_m, y_m) = mouse_position();
-            (
-                clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
-                clamp((y_m - screen.y) / screen.height, 0., 1.),
-            )
-        };
-        let x_direction = x_mouse - state.player.position.x;
-        let y_direction = y_mouse - state.player.position.y;
-
-        let direction = Vec2 {
-            x: x_direction,
-            y: y_direction,
-        }
-        .normalize();
-        let position = state.player.position + (direction * PLAYER_RADIUS);
+        let position = state.player.body.position + (state.player.body.sight * PLAYER_RADIUS);
         state.balls.push(Ball {
             position,
             direction,
-            from_player: true,
         });
     } else {
         state.player.reload = clamp(state.player.reload - dt, 0., PLAYER_RELOAD);
@@ -179,6 +295,17 @@ fn draw_circ(screen: &Screen, x: f32, y: f32, r: f32, color: Color) {
         color,
     );
 }
+
+fn draw_body(screen: &Screen, body: &Body, color: Color) {
+    draw_circ(
+        screen,
+        body.position.x,
+        body.position.y,
+        PLAYER_RADIUS,
+        color,
+    );
+}
+
 fn draw_lin(screen: &Screen, x1: f32, y1: f32, x2: f32, y2: f32, width: f32, color: Color) {
     debug_assert!((0. ..=RATIO_W_H).contains(&x1));
     debug_assert!((0. ..=1.).contains(&y1));
@@ -207,31 +334,49 @@ fn draw(state: &State, screen: Screen) {
         1. - 2. * WALL_SIZE,
         WHITE,
     );
-    draw_circ(
+    draw_body(
         &screen,
-        state.player.position.x,
-        state.player.position.y,
-        PLAYER_RADIUS,
-        if state.player.hiding { BLUE } else { GREEN },
+        &state.player.body,
+        if state.player.visible { GREEN } else { BLUE },
     );
 
-    let (x_mouse, y_mouse) = {
-        let (x_m, y_m) = mouse_position();
-        (
-            clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
-            clamp((y_m - screen.y) / screen.height, 0., 1.),
-        )
-    };
-    draw_lin(
-        &screen,
-        state.player.position.x,
-        state.player.position.y,
-        x_mouse,
-        y_mouse,
-        BALL_RADIUS,
-        GRAY,
-    );
+    // INFO: uncomment if want to see sight trace
+    //
+    // let (x_mouse, y_mouse) = {
+    //     let (x_m, y_m) = mouse_position();
+    //     (
+    //         clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
+    //         clamp((y_m - screen.y) / screen.height, 0., 1.),
+    //     )
+    // };
+    // draw_lin(
+    //     &screen,
+    //     state.player.position.x,
+    //     state.player.position.y,
+    //     x_mouse,
+    //     y_mouse,
+    //     BALL_RADIUS,
+    //     GRAY,
+    // );
     for ball in &state.balls {
         draw_circ(&screen, ball.position.x, ball.position.y, BALL_RADIUS, RED);
+    }
+    for enemy in &state.enemies {
+        draw_body(&screen, &enemy.body, ORANGE);
+        if enemy.slash > 0 {
+            let slash_x = enemy.body.sight.x * PLAYER_RADIUS + enemy.body.position.x;
+            let slash_y = enemy.body.sight.y * PLAYER_RADIUS + enemy.body.position.y;
+            let slash_x_end = enemy.body.sight.x * DASH_LEN + slash_x;
+            let slash_y_end = enemy.body.sight.y * DASH_LEN + slash_y;
+            draw_lin(
+                &screen,
+                slash_x,
+                slash_y,
+                slash_x_end,
+                slash_y_end,
+                0.05,
+                GRAY,
+            );
+        }
     }
 }
