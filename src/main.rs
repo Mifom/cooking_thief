@@ -1,3 +1,6 @@
+#![warn(clippy::semicolon_if_nothing_returned)]
+use std::process::exit;
+
 use ::rand::{thread_rng, Rng};
 use macroquad::prelude::*;
 
@@ -65,7 +68,7 @@ impl Body {
         );
     }
 
-    fn collide(&mut self, other: &mut Body) {
+    fn collide(&mut self, other: &mut Self) {
         let diff = self.position - other.position;
         let penetration = PLAYER_RADIUS - (diff.length() / 2.);
         if penetration > 0. {
@@ -163,8 +166,7 @@ fn get_screen_size(width: f32, height: f32) -> Screen {
 
 #[macroquad::main("Game")]
 async fn main() {
-    let mut rng = thread_rng();
-    let mut state = State::Battle(BattleState::generate(&mut rng));
+    let mut state = State::Battle(BattleState::generate(&mut thread_rng()));
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
@@ -174,9 +176,9 @@ async fn main() {
         draw_rectangle(screen.x, screen.y, screen.width, screen.height, WHITE);
 
         change_state(&mut state, &screen, dt);
-        draw(&state, screen);
+        draw(&state, &screen);
 
-        next_frame().await
+        next_frame().await;
     }
 }
 
@@ -188,16 +190,19 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
             }
         }
         State::Restart(_) => {
-            if is_key_pressed(KeyCode::R) {
+            if is_key_pressed(KeyCode::Q) {
+                exit(0)
+            } else if is_key_pressed(KeyCode::R) {
                 *state = State::Battle(BattleState::generate(&mut thread_rng()));
             }
         }
     }
 }
 
-/// This function changes state using the controls
+/// This function changes state of battle using the controls
+/// Returns Some(win) if battle is over
 fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Option<bool> {
-    if state.enemies.len() == 0 {
+    if state.enemies.is_empty() {
         return Some(true);
     }
     let mut move_direction = (0, 0);
@@ -364,12 +369,13 @@ fn draw_lin(screen: &Screen, x1: f32, y1: f32, x2: f32, y2: f32, width: f32, col
         y2 * screen.height + screen.y,
         width * screen.height,
         color,
-    )
+    );
 }
-fn draw_texts(screen: &Screen, text: &str, x: f32, y: f32, font: f32, color: Color) {
-    debug_assert!((0. ..=RATIO_W_H).contains(&x));
+fn draw_centered_text(screen: &Screen, text: &str, y: f32, font: f32, color: Color) {
     debug_assert!((0. ..=1.).contains(&y));
     debug_assert!((0. ..=1.).contains(&font));
+    let text_dims = measure_text(text, None, (screen.height * font) as u16, 1.);
+    let x = (RATIO_W_H - text_dims.width / screen.height) / 2.;
     draw_text(
         text,
         screen.height * x + screen.x,
@@ -380,12 +386,12 @@ fn draw_texts(screen: &Screen, text: &str, x: f32, y: f32, font: f32, color: Col
 }
 
 /// This function draws the state to the screen
-fn draw(state: &State, screen: Screen) {
+fn draw(state: &State, screen: &Screen) {
     match state {
         State::Battle(state) => {
             // Walls
             draw_rect(
-                &screen,
+                screen,
                 0.,
                 0.,
                 RATIO_W_H,
@@ -393,7 +399,7 @@ fn draw(state: &State, screen: Screen) {
                 if state.player.low_health { RED } else { GRAY },
             );
             draw_rect(
-                &screen,
+                screen,
                 WALL_SIZE,
                 WALL_SIZE,
                 RATIO_W_H - 2. * WALL_SIZE,
@@ -402,7 +408,7 @@ fn draw(state: &State, screen: Screen) {
             );
 
             draw_body(
-                &screen,
+                screen,
                 &state.player.body,
                 if state.player.visible { GREEN } else { BLUE },
             );
@@ -417,7 +423,7 @@ fn draw(state: &State, screen: Screen) {
             //     )
             // };
             // draw_lin(
-            //     &screen,
+            //     screen,
             //     state.player.position.x,
             //     state.player.position.y,
             //     x_mouse,
@@ -426,17 +432,17 @@ fn draw(state: &State, screen: Screen) {
             //     GRAY,
             // );
             for ball in &state.balls {
-                draw_circ(&screen, ball.position.x, ball.position.y, BALL_RADIUS, RED);
+                draw_circ(screen, ball.position.x, ball.position.y, BALL_RADIUS, RED);
             }
             for enemy in &state.enemies {
-                draw_body(&screen, &enemy.body, ORANGE);
+                draw_body(screen, &enemy.body, ORANGE);
                 if enemy.slash > 0 {
                     let slash_x = enemy.body.sight.x * PLAYER_RADIUS + enemy.body.position.x;
                     let slash_y = enemy.body.sight.y * PLAYER_RADIUS + enemy.body.position.y;
                     let slash_x_end = enemy.body.sight.x * DASH_LEN + slash_x;
                     let slash_y_end = enemy.body.sight.y * DASH_LEN + slash_y;
                     draw_lin(
-                        &screen,
+                        screen,
                         slash_x,
                         slash_y,
                         slash_x_end,
@@ -447,16 +453,16 @@ fn draw(state: &State, screen: Screen) {
                 }
             }
         }
-        State::Restart(win) => draw_texts(
-            &screen,
+        State::Restart(win) => draw_centered_text(
+            screen,
             &format!(
                 "You {}, press R to restart",
                 if *win { "win" } else { "lose" }
             ),
-            RATIO_W_H / 8.,
             0.5,
             0.1,
             BLACK,
         ),
     }
+    draw_text(&format!("{}", get_fps()), 10., 40., 30., YELLOW);
 }
