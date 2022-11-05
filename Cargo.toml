@@ -8,3 +8,4 @@ authors = ["Mifom <requestdg@gmail.com>"]
 
 [dependencies]
 macroquad = "0.3.24"
+rand = "0.8.5"
