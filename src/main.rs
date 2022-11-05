@@ -69,13 +69,16 @@ impl Body {
     }
 
     fn collide(&mut self, other: &mut Self) {
-        let diff = self.position - other.position;
-        let penetration = PLAYER_RADIUS - (diff.length() / 2.);
-        if penetration > 0. {
-            let shift = diff.normalize() * penetration;
+        if let Some(shift) = self.collision(other) {
             self.position += shift;
             other.position -= shift;
         }
+    }
+
+    fn collision(&self, other: &Self) -> Option<Vec2> {
+        let diff = self.position - other.position;
+        let penetration = PLAYER_RADIUS - (diff.length() / 2.);
+        (penetration > 0.).then(|| diff.normalize() * penetration)
     }
 }
 
@@ -92,10 +95,17 @@ struct Ball {
 }
 
 struct Enemy {
+    id: u32,
     body: Body,
     reload: f32,
     slash: i8,
 }
+impl PartialEq for Enemy {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+impl Eq for Enemy {}
 
 struct BattleState {
     player: Player,
@@ -127,6 +137,7 @@ impl BattleState {
             balls: vec![],
             enemies: (1..=rng.gen_range(1..=3))
                 .map(|_| Enemy {
+                    id: rng.gen(),
                     body: Body {
                         position: Vec2 {
                             x: rng.gen_range(RATIO_W_H / 3.0..2. * RATIO_W_H / 3.),
@@ -299,6 +310,22 @@ fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Opt
             .balls
             .retain(|ball| !ball_collisions.contains(&ball.position));
     }
+    let mut enemy_shifts: Vec<_> = (0..state.enemies.len()).map(|_| Vec2::default()).collect();
+    for (left_pos, left) in state.enemies.iter().enumerate() {
+        for (right_pos, right) in state.enemies.iter().enumerate() {
+            if left == right {
+                continue;
+            }
+            if let Some(shift) = left.body.collision(&right.body) {
+                enemy_shifts[left_pos] += shift;
+                enemy_shifts[right_pos] -= shift;
+            }
+        }
+    }
+    for (enemy_pos, enemy) in state.enemies.iter_mut().enumerate() {
+        enemy.body.position += enemy_shifts[enemy_pos] / 2.;
+    }
+
     state
         .enemies
         .retain(|enemy| !enemy_collisions.contains(&enemy.body.position));
@@ -464,5 +491,6 @@ fn draw(state: &State, screen: &Screen) {
             BLACK,
         ),
     }
+    #[cfg(debug_assertions)]
     draw_text(&format!("{}", get_fps()), 10., 40., 30., YELLOW);
 }
