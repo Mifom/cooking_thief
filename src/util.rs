@@ -140,6 +140,7 @@ pub struct Enemy {
     pub reload: f32,
     pub slash: i8,
     pub actor: BasicAi,
+    pub dead: bool,
 }
 
 impl Enemy {
@@ -150,6 +151,7 @@ impl Enemy {
             reload: 0.,
             slash: 0,
             actor: BasicAi::new(position),
+            dead: false,
         }
     }
 }

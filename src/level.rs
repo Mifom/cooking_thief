@@ -22,7 +22,7 @@ pub enum Error {
     },
 }
 
-pub struct Map {
+pub struct Level {
     rooms: Vec<Room>,
     current_room: usize,
     player: Player,
@@ -75,7 +75,7 @@ struct DoorConfig {
     to: u8,
 }
 
-impl Map {
+impl Level {
     pub fn from_string(str: impl AsRef<str>) -> Result<Self, Error> {
         let config = serde_yaml::from_str(str.as_ref()).map_err(Error::Parse)?;
         Self::from_config(config)
@@ -155,7 +155,11 @@ impl Map {
     }
 
     pub fn update(&mut self, player_action: PlayerAction, dt: f32) -> Option<bool> {
-        if self.rooms.iter().all(|room| room.enemies.is_empty()) {
+        if self
+            .rooms
+            .iter()
+            .all(|room| room.enemies.iter().all(|enemy| enemy.dead))
+        {
             return Some(true);
         }
 
@@ -214,8 +218,11 @@ impl Map {
         });
 
         for (room_id, room) in self.rooms.iter_mut().enumerate() {
-            let mut enemy_collisions = Vec::new();
             for enemy in &mut room.enemies {
+                if enemy.dead {
+                    enemy.body.collide(&mut self.player.body);
+                    continue;
+                }
                 let player = (room_id == self.current_room
                     && (self.player.visible
                         || enemy.body.position.distance(self.player.body.position)
@@ -240,7 +247,7 @@ impl Map {
                 let mut ball_collisions = Vec::new();
                 for ball in &room.balls {
                     if enemy.body.position.distance(ball.position) < BALL_RADIUS + PLAYER_RADIUS {
-                        enemy_collisions.push(enemy.body.position);
+                        enemy.dead = true;
                         ball_collisions.push(ball.position);
                     }
                 }
@@ -263,9 +270,6 @@ impl Map {
             for (enemy_pos, enemy) in room.enemies.iter_mut().enumerate() {
                 enemy.body.position += enemy_shifts[enemy_pos] / 2.;
             }
-
-            room.enemies
-                .retain(|enemy| !enemy_collisions.contains(&enemy.body.position));
         }
         if player_action.toggle_visibility {
             self.player.visible = !self.player.visible;
@@ -332,6 +336,15 @@ impl Map {
         }
         for enemy in &room.enemies {
             draw_body(screen, &enemy.body, ORANGE);
+            if enemy.dead {
+                draw_circ(
+                    screen,
+                    enemy.body.position.x,
+                    enemy.body.position.y,
+                    PLAYER_RADIUS / 2.,
+                    RED,
+                );
+            }
             if enemy.slash > 0 {
                 let slash_x = enemy.body.sight.x * PLAYER_RADIUS + enemy.body.position.x;
                 let slash_y = enemy.body.sight.y * PLAYER_RADIUS + enemy.body.position.y;

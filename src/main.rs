@@ -1,6 +1,6 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
 use graphics::{draw_centered_text, get_screen_size, Screen};
-use map::Map;
+use level::Level;
 use std::{fs::File, io::BufReader, process::exit};
 use util::*;
 
@@ -8,18 +8,18 @@ use macroquad::prelude::*;
 
 mod ai;
 mod graphics;
-mod map;
+mod level;
 mod util;
 
 enum State {
-    Battle(Map),
+    Battle(Level),
     Restart(bool),
 }
 
 #[macroquad::main("The Truthy Scroll")]
 async fn main() {
     let file = File::open("assets/test.yaml").unwrap();
-    let mut state = State::Battle(Map::from_reader(BufReader::new(file)).expect("TODO"));
+    let mut state = State::Battle(Level::from_reader(BufReader::new(file)).expect("TODO"));
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
@@ -47,7 +47,7 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
                 exit(0)
             } else if is_key_pressed(KeyCode::R) {
                 *state = State::Battle(
-                    Map::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
+                    Level::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
                         .unwrap(),
                 );
             }
@@ -57,7 +57,7 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
 
 /// This function changes state of battle using the controls
 /// Returns Some(win) if battle is over
-fn change_battle_state(map: &mut Map, screen: &Screen, dt: f32) -> Option<bool> {
+fn change_battle_state(map: &mut Level, screen: &Screen, dt: f32) -> Option<bool> {
     let mut move_direction = (0, 0);
     if is_key_down(KeyCode::W) {
         move_direction.1 -= 1;

@@ -12,7 +12,7 @@ TODOs for this project:
   - [ ] Search in open door(?)
 - [ ] Story
   - [X] Main plot
-  - [ ] Scrollholder
+  - [ ] Receipt holder
   - [ ] NPC(s?)
   - [ ] Text
 - [ ] Graphics
