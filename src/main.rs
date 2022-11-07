@@ -1,78 +1,25 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use std::process::exit;
+use graphics::{draw_centered_text, get_screen_size, Screen};
+use map::Map;
+use std::{fs::File, io::BufReader, process::exit};
 use util::*;
 
-use ::rand::{thread_rng, Rng};
 use macroquad::prelude::*;
 
 mod ai;
+mod graphics;
+mod map;
 mod util;
 
-struct Screen {
-    x: f32,
-    y: f32,
-    width: f32,
-    height: f32,
-}
-
-struct BattleState {
-    player: Player,
-    balls: Vec<Ball>,
-    enemies: Vec<Enemy>,
-}
-
 enum State {
-    Battle(BattleState),
+    Battle(Map),
     Restart(bool),
-}
-
-impl BattleState {
-    fn generate(rng: &mut impl Rng) -> Self {
-        Self {
-            player: Player::new(Vec2 {
-                x: 0.1,
-                y: rng.gen_range(0.25..=0.75),
-            }),
-            balls: vec![],
-            enemies: (1..=rng.gen_range(1..=3))
-                .map(|id| {
-                    Enemy::new(
-                        id,
-                        Vec2 {
-                            x: rng.gen_range(RATIO_W_H / 3.0..2. * RATIO_W_H / 3.),
-                            y: rng.gen_range(0.25..=0.75),
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
-}
-
-/// Gets screen size from window size for the defined ratio
-fn get_screen_size(width: f32, height: f32) -> Screen {
-    if width / height > RATIO_W_H {
-        let new_width = height * RATIO_W_H;
-        Screen {
-            x: (width - new_width) / 2.,
-            y: 0.,
-            width: new_width,
-            height,
-        }
-    } else {
-        let new_height = width / RATIO_W_H;
-        Screen {
-            x: 0.,
-            y: (height - new_height) / 2.,
-            width,
-            height: new_height,
-        }
-    }
 }
 
 #[macroquad::main("The Truthy Scroll")]
 async fn main() {
-    let mut state = State::Battle(BattleState::generate(&mut thread_rng()));
+    let file = File::open("assets/test.yaml").unwrap();
+    let mut state = State::Battle(Map::from_reader(BufReader::new(file)).expect("TODO"));
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
@@ -99,7 +46,10 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
             if is_key_pressed(KeyCode::Q) {
                 exit(0)
             } else if is_key_pressed(KeyCode::R) {
-                *state = State::Battle(BattleState::generate(&mut thread_rng()));
+                *state = State::Battle(
+                    Map::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
+                        .unwrap(),
+                );
             }
         }
     }
@@ -107,10 +57,7 @@ fn change_state(state: &mut State, screen: &Screen, dt: f32) {
 
 /// This function changes state of battle using the controls
 /// Returns Some(win) if battle is over
-fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Option<bool> {
-    if state.enemies.is_empty() {
-        return Some(true);
-    }
+fn change_battle_state(map: &mut Map, screen: &Screen, dt: f32) -> Option<bool> {
     let mut move_direction = (0, 0);
     if is_key_down(KeyCode::W) {
         move_direction.1 -= 1;
@@ -131,237 +78,24 @@ fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Opt
             clamp((y_m - screen.y) / screen.height, 0., 1.),
         )
     };
-    let x_direction = x_mouse - state.player.body.position.x;
-    let y_direction = y_mouse - state.player.body.position.y;
 
-    let move_action = MoveAction {
+    let player_action = PlayerAction {
         move_direction,
-        sight: Vec2 {
-            x: x_direction,
-            y: y_direction,
-        }
-        .normalize_or_zero(),
+        view_point: Vec2 {
+            x: x_mouse,
+            y: y_mouse,
+        },
+        toggle_visibility: is_key_pressed(KeyCode::Space),
+        shoot: is_mouse_button_down(MouseButton::Left),
     };
 
-    state.player.body.update(move_action, dt);
-
-    state.balls = state
-        .balls
-        .iter()
-        .filter(|ball| {
-            ball.position.x >= WALL_SIZE + PLAYER_RADIUS
-                && ball.position.x <= RATIO_W_H - WALL_SIZE - PLAYER_RADIUS
-                && ball.position.y >= WALL_SIZE + PLAYER_RADIUS
-                && ball.position.y <= 1. - WALL_SIZE - PLAYER_RADIUS
-        })
-        .map(|ball| Ball {
-            position: ball.position + ball.direction * BALL_SPEED * dt,
-            direction: ball.direction,
-        })
-        .collect();
-
-    let mut enemy_collisions = Vec::new();
-    for enemy in &mut state.enemies {
-        let player = (state.player.visible
-            || enemy.body.position.distance(state.player.body.position)
-                < 2. * PLAYER_RADIUS + SLASH_LEN / 2.)
-            .then_some(state.player.body.position);
-        let (action, slash) = enemy.actor.action(&enemy.body, player, dt);
-        enemy.body.update(action, dt);
-        enemy.body.collide(&mut state.player.body);
-        if slash && enemy.reload == 0. {
-            enemy.reload = PLAYER_RELOAD;
-            enemy.slash = 5;
-            if state.player.low_health {
-                return Some(false);
-            } else {
-                state.player.low_health = true;
-            }
-        } else {
-            enemy.slash = clamp(enemy.slash - 1, 0, 5);
-            enemy.reload = clamp(enemy.reload - dt, 0., PLAYER_RELOAD);
-        }
-        let mut ball_collisions = Vec::new();
-        for ball in &state.balls {
-            if enemy.body.position.distance(ball.position) < BALL_RADIUS + PLAYER_RADIUS {
-                enemy_collisions.push(enemy.body.position);
-                ball_collisions.push(ball.position);
-            }
-        }
-        state
-            .balls
-            .retain(|ball| !ball_collisions.contains(&ball.position));
-    }
-    let mut enemy_shifts: Vec<_> = (0..state.enemies.len()).map(|_| Vec2::default()).collect();
-    for (left_pos, left) in state.enemies.iter().enumerate() {
-        for (right_pos, right) in state.enemies.iter().enumerate() {
-            if left == right {
-                continue;
-            }
-            if let Some(shift) = left.body.collision(&right.body) {
-                enemy_shifts[left_pos] += shift;
-                enemy_shifts[right_pos] -= shift;
-            }
-        }
-    }
-    for (enemy_pos, enemy) in state.enemies.iter_mut().enumerate() {
-        enemy.body.position += enemy_shifts[enemy_pos] / 2.;
-    }
-
-    state
-        .enemies
-        .retain(|enemy| !enemy_collisions.contains(&enemy.body.position));
-
-    if is_key_pressed(KeyCode::Space) {
-        state.player.visible = !state.player.visible;
-    }
-    if is_mouse_button_down(MouseButton::Left) && state.player.visible && state.player.reload == 0.
-    {
-        state.player.reload = PLAYER_RELOAD;
-        let position = state.player.body.position + (state.player.body.sight * PLAYER_RADIUS);
-        state.balls.push(Ball {
-            position,
-            direction: state.player.body.sight,
-        });
-    } else {
-        state.player.reload = clamp(state.player.reload - dt, 0., PLAYER_RELOAD);
-    }
-    None
-}
-
-fn draw_rect(screen: &Screen, x: f32, y: f32, w: f32, h: f32, color: Color) {
-    debug_assert!((0. ..=RATIO_W_H).contains(&x));
-    debug_assert!((0. ..=1.).contains(&y));
-    debug_assert!((0. ..=RATIO_W_H).contains(&w));
-    debug_assert!((0. ..=1.).contains(&h));
-    draw_rectangle(
-        screen.height * x + screen.x,
-        screen.height * y + screen.y,
-        screen.height * w,
-        screen.height * h,
-        color,
-    );
-}
-
-fn draw_circ(screen: &Screen, x: f32, y: f32, r: f32, color: Color) {
-    debug_assert!((0. ..=RATIO_W_H).contains(&x));
-    debug_assert!((0. ..=1.).contains(&y));
-    debug_assert!((0. ..=1.).contains(&r));
-    draw_circle(
-        screen.height * x + screen.x,
-        screen.height * y + screen.y,
-        screen.height * r,
-        color,
-    );
-}
-
-fn draw_body(screen: &Screen, body: &Body, color: Color) {
-    draw_circ(
-        screen,
-        body.position.x,
-        body.position.y,
-        PLAYER_RADIUS,
-        color,
-    );
-}
-
-fn draw_lin(screen: &Screen, x1: f32, y1: f32, x2: f32, y2: f32, width: f32, color: Color) {
-    debug_assert!((0. ..=RATIO_W_H).contains(&x1));
-    debug_assert!((0. ..=1.).contains(&y1));
-    debug_assert!((0. ..=RATIO_W_H).contains(&x2));
-    debug_assert!((0. ..=1.).contains(&y2));
-    debug_assert!((0. ..=RATIO_W_H).contains(&width));
-    draw_line(
-        x1 * screen.height + screen.x,
-        y1 * screen.height + screen.y,
-        x2 * screen.height + screen.x,
-        y2 * screen.height + screen.y,
-        width * screen.height,
-        color,
-    );
-}
-fn draw_centered_text(screen: &Screen, text: &str, y: f32, font: f32, color: Color) {
-    debug_assert!((0. ..=1.).contains(&y));
-    debug_assert!((0. ..=1.).contains(&font));
-    let text_dims = measure_text(text, None, (screen.height * font) as u16, 1.);
-    let x = (RATIO_W_H - text_dims.width / screen.height) / 2.;
-    draw_text(
-        text,
-        screen.height * x + screen.x,
-        screen.height * y + screen.y,
-        screen.height * font,
-        color,
-    );
+    map.update(player_action, dt)
 }
 
 /// This function draws the state to the screen
 fn draw(state: &State, screen: &Screen) {
     match state {
-        State::Battle(state) => {
-            // Walls
-            draw_rect(
-                screen,
-                0.,
-                0.,
-                RATIO_W_H,
-                1.,
-                if state.player.low_health { RED } else { GRAY },
-            );
-            draw_rect(
-                screen,
-                WALL_SIZE,
-                WALL_SIZE,
-                RATIO_W_H - 2. * WALL_SIZE,
-                1. - 2. * WALL_SIZE,
-                WHITE,
-            );
-
-            draw_body(
-                screen,
-                &state.player.body,
-                if state.player.visible { GREEN } else { BLUE },
-            );
-
-            // INFO: uncomment if want to see sight trace
-            //
-            // let (x_mouse, y_mouse) = {
-            //     let (x_m, y_m) = mouse_position();
-            //     (
-            //         clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
-            //         clamp((y_m - screen.y) / screen.height, 0., 1.),
-            //     )
-            // };
-            // draw_lin(
-            //     screen,
-            //     state.player.position.x,
-            //     state.player.position.y,
-            //     x_mouse,
-            //     y_mouse,
-            //     BALL_RADIUS,
-            //     GRAY,
-            // );
-            for ball in &state.balls {
-                draw_circ(screen, ball.position.x, ball.position.y, BALL_RADIUS, RED);
-            }
-            for enemy in &state.enemies {
-                draw_body(screen, &enemy.body, ORANGE);
-                if enemy.slash > 0 {
-                    let slash_x = enemy.body.sight.x * PLAYER_RADIUS + enemy.body.position.x;
-                    let slash_y = enemy.body.sight.y * PLAYER_RADIUS + enemy.body.position.y;
-                    let slash_x_end = enemy.body.sight.x * SLASH_LEN + slash_x;
-                    let slash_y_end = enemy.body.sight.y * SLASH_LEN + slash_y;
-                    draw_lin(
-                        screen,
-                        slash_x,
-                        slash_y,
-                        slash_x_end,
-                        slash_y_end,
-                        0.05,
-                        GRAY,
-                    );
-                }
-            }
-        }
+        State::Battle(map) => map.draw(screen),
         State::Restart(win) => draw_centered_text(
             screen,
             &format!(

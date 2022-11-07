@@ -1,15 +1,15 @@
 TODOs for this project:
 
 - [ ] Level Design
-  - [ ] Doors
-  - [ ] Level definition from .*ml
+  - [X] Doors
+  - [X] Level definition from .yaml
   - [ ] Items
   - [ ] Bosses
   - [ ] NPC(s?)
 - [ ] AI
   - [X] Basic movement
   - [X] State machine to find hidden player
-  - [ ] Search in open door(stopped by {Level Design}.Door)
+  - [ ] Search in open door(?)
 - [ ] Story
   - [X] Main plot
   - [ ] Scrollholder

@@ -24,6 +24,13 @@ pub struct MoveAction {
     pub sight: Vec2,
 }
 
+pub struct PlayerAction {
+    pub move_direction: (i32, i32),
+    pub view_point: Vec2,
+    pub toggle_visibility: bool,
+    pub shoot: bool,
+}
+
 pub struct Body {
     pub position: Vec2,
     pub sight: Vec2,

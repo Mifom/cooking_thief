@@ -1,0 +1,10 @@
+rooms:
+  - id: 0
+    enter: West
+    enemies: 2
+    doors:
+    - direction: East
+      to: 1
+  - id: 1
+    enemies: 1
+    doors:
