@@ -1,0 +1,26 @@
+TODOs for this project:
+
+- [ ] Level Design
+  - [ ] Doors
+  - [ ] Level definition from .*ml
+  - [ ] Items
+  - [ ] Bosses
+  - [ ] NPC(s?)
+- [ ] AI
+  - [X] Basic movement
+  - [X] State machine to find hidden player
+  - [ ] Search in open door(stopped by {Level Design}.Door)
+- [ ] Story
+  - [X] Main plot
+  - [ ] Scrollholder
+  - [ ] NPC(s?)
+  - [ ] Text
+- [ ] Graphics
+  - [ ] Environment graphics
+  - [ ] Player/enemies graphics
+  - [ ] Story pages
+- [ ] Audio
+  - [ ] Themes
+  - [ ] Sound effects for actions
+- [ ] HUD
+  - [ ] Menu

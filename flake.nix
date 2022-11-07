@@ -42,23 +42,12 @@
             pkgsCross.mingwW64.windows.pthreads
           ];
 
-          nativeBuildInputs = with pkgs; [
-            # We need Wine to run tests:
-            wineWowPackages.stable
-          ];
-
-
           # Tells Cargo that we're building for Windows.
           # (https://doc.rust-lang.org/cargo/reference/config.html#buildtarget)
           CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
 
-          # Tells Cargo that it should use Wine to run tests.
-          # (https://doc.rust-lang.org/cargo/reference/config.html#targettriplerunner)
-          CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER = pkgs.writeScript "wine-wrapper" ''
-            export WINEPREFIX="$(mktemp -d)"
-            exec wine64 $@
-          '';
         };
+
       }
     );
 }

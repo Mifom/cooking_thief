@@ -1,20 +1,12 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
 use std::process::exit;
+use util::*;
 
 use ::rand::{thread_rng, Rng};
 use macroquad::prelude::*;
 
-const RATIO_W_H: f32 = 16. / 9.;
-
-const BALL_SPEED: f32 = 1.75;
-const PLAYER_RADIUS: f32 = 0.025;
-const BALL_RADIUS: f32 = 0.01;
-const WALL_SIZE: f32 = 0.02;
-
-const SPEED_STEPS: i32 = 10;
-const PLAYER_MAX_SPEED: f32 = 0.65;
-const PLAYER_RELOAD: f32 = 0.5;
-const DASH_LEN: f32 = 0.02;
+mod ai;
+mod util;
 
 struct Screen {
     x: f32,
@@ -22,90 +14,6 @@ struct Screen {
     width: f32,
     height: f32,
 }
-
-struct Speed {
-    x: i32,
-    y: i32,
-}
-
-struct Body {
-    position: Vec2,
-    sight: Vec2,
-    speed: Speed,
-}
-
-impl Body {
-    fn update(&mut self, move_direction: (i32, i32), sight: Vec2, dt: f32) {
-        self.sight = sight.normalize();
-        self.speed.x += 2 * move_direction.0;
-        self.speed.y += 2 * move_direction.1;
-
-        match self.speed.x.cmp(&0) {
-            std::cmp::Ordering::Less => self.speed.x += 1,
-            std::cmp::Ordering::Greater => self.speed.x -= 1,
-            _ => {}
-        }
-        self.speed.x = clamp(self.speed.x, -SPEED_STEPS, SPEED_STEPS);
-        match self.speed.y.cmp(&0) {
-            std::cmp::Ordering::Less => self.speed.y += 1,
-            std::cmp::Ordering::Greater => self.speed.y -= 1,
-            _ => {}
-        }
-        self.speed.y = clamp(self.speed.y, -SPEED_STEPS, SPEED_STEPS);
-        self.position.x += PLAYER_MAX_SPEED * (self.speed.x as f32) / (SPEED_STEPS as f32) * dt;
-        self.position.y += PLAYER_MAX_SPEED * (self.speed.y as f32) / (SPEED_STEPS as f32) * dt;
-
-        // wall collision
-        self.position.x = clamp(
-            self.position.x,
-            WALL_SIZE + PLAYER_RADIUS,
-            RATIO_W_H - WALL_SIZE - PLAYER_RADIUS,
-        );
-        self.position.y = clamp(
-            self.position.y,
-            WALL_SIZE + PLAYER_RADIUS,
-            1. - WALL_SIZE - PLAYER_RADIUS,
-        );
-    }
-
-    fn collide(&mut self, other: &mut Self) {
-        if let Some(shift) = self.collision(other) {
-            self.position += shift;
-            other.position -= shift;
-        }
-    }
-
-    fn collision(&self, other: &Self) -> Option<Vec2> {
-        let diff = self.position - other.position;
-        let penetration = PLAYER_RADIUS - (diff.length() / 2.);
-        (penetration > 0.).then(|| diff.normalize() * penetration)
-    }
-}
-
-struct Player {
-    body: Body,
-    visible: bool,
-    reload: f32,
-    low_health: bool,
-}
-
-struct Ball {
-    position: Vec2,
-    direction: Vec2,
-}
-
-struct Enemy {
-    id: u32,
-    body: Body,
-    reload: f32,
-    slash: i8,
-}
-impl PartialEq for Enemy {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-impl Eq for Enemy {}
 
 struct BattleState {
     player: Player,
@@ -121,33 +29,20 @@ enum State {
 impl BattleState {
     fn generate(rng: &mut impl Rng) -> Self {
         Self {
-            player: Player {
-                body: Body {
-                    position: Vec2 {
-                        x: 0.1,
-                        y: rng.gen_range(0.25..=0.75),
-                    },
-                    speed: Speed { x: 0, y: 0 },
-                    sight: Vec2 { x: 1., y: 0. },
-                },
-                visible: false,
-                reload: 0.,
-                low_health: false,
-            },
+            player: Player::new(Vec2 {
+                x: 0.1,
+                y: rng.gen_range(0.25..=0.75),
+            }),
             balls: vec![],
             enemies: (1..=rng.gen_range(1..=3))
-                .map(|_| Enemy {
-                    id: rng.gen(),
-                    body: Body {
-                        position: Vec2 {
+                .map(|id| {
+                    Enemy::new(
+                        id,
+                        Vec2 {
                             x: rng.gen_range(RATIO_W_H / 3.0..2. * RATIO_W_H / 3.),
                             y: rng.gen_range(0.25..=0.75),
                         },
-                        speed: Speed { x: 0, y: 0 },
-                        sight: Vec2 { x: 1., y: 0. },
-                    },
-                    reload: 0.,
-                    slash: 0,
+                    )
                 })
                 .collect(),
         }
@@ -175,7 +70,7 @@ fn get_screen_size(width: f32, height: f32) -> Screen {
     }
 }
 
-#[macroquad::main("Game")]
+#[macroquad::main("The Truthy Scroll")]
 async fn main() {
     let mut state = State::Battle(BattleState::generate(&mut thread_rng()));
     loop {
@@ -239,13 +134,16 @@ fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Opt
     let x_direction = x_mouse - state.player.body.position.x;
     let y_direction = y_mouse - state.player.body.position.y;
 
-    let direction = Vec2 {
-        x: x_direction,
-        y: y_direction,
-    }
-    .normalize_or_zero();
+    let move_action = MoveAction {
+        move_direction,
+        sight: Vec2 {
+            x: x_direction,
+            y: y_direction,
+        }
+        .normalize_or_zero(),
+    };
 
-    state.player.body.update(move_direction, direction, dt);
+    state.player.body.update(move_action, dt);
 
     state.balls = state
         .balls
@@ -264,30 +162,14 @@ fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Opt
 
     let mut enemy_collisions = Vec::new();
     for enemy in &mut state.enemies {
-        let mut move_direction = (0, 0);
-        if state.player.visible {
-            if enemy.body.position.y > state.player.body.position.y {
-                move_direction.1 -= 1;
-            } else if enemy.body.position.y < state.player.body.position.y {
-                move_direction.1 += 1;
-            }
-            if enemy.body.position.x > state.player.body.position.x {
-                move_direction.0 -= 1;
-            } else if enemy.body.position.x < state.player.body.position.x {
-                move_direction.0 += 1;
-            }
-        }
-        enemy.body.update(
-            move_direction,
-            state.player.body.position - enemy.body.position,
-            dt,
-        );
+        let player = (state.player.visible
+            || enemy.body.position.distance(state.player.body.position)
+                < 2. * PLAYER_RADIUS + SLASH_LEN / 2.)
+            .then_some(state.player.body.position);
+        let (action, slash) = enemy.actor.action(&enemy.body, player, dt);
+        enemy.body.update(action, dt);
         enemy.body.collide(&mut state.player.body);
-        let dash_feel = if state.player.visible { 1. } else { 0.5 };
-        if enemy.body.position.distance(state.player.body.position)
-            < 2. * PLAYER_RADIUS + DASH_LEN * dash_feel
-            && enemy.reload == 0.
-        {
+        if slash && enemy.reload == 0. {
             enemy.reload = PLAYER_RELOAD;
             enemy.slash = 5;
             if state.player.low_health {
@@ -339,7 +221,7 @@ fn change_battle_state(state: &mut BattleState, screen: &Screen, dt: f32) -> Opt
         let position = state.player.body.position + (state.player.body.sight * PLAYER_RADIUS);
         state.balls.push(Ball {
             position,
-            direction,
+            direction: state.player.body.sight,
         });
     } else {
         state.player.reload = clamp(state.player.reload - dt, 0., PLAYER_RELOAD);
@@ -466,8 +348,8 @@ fn draw(state: &State, screen: &Screen) {
                 if enemy.slash > 0 {
                     let slash_x = enemy.body.sight.x * PLAYER_RADIUS + enemy.body.position.x;
                     let slash_y = enemy.body.sight.y * PLAYER_RADIUS + enemy.body.position.y;
-                    let slash_x_end = enemy.body.sight.x * DASH_LEN + slash_x;
-                    let slash_y_end = enemy.body.sight.y * DASH_LEN + slash_y;
+                    let slash_x_end = enemy.body.sight.x * SLASH_LEN + slash_x;
+                    let slash_y_end = enemy.body.sight.y * SLASH_LEN + slash_y;
                     draw_lin(
                         screen,
                         slash_x,
