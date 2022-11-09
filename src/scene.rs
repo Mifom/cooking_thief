@@ -3,7 +3,7 @@ use std::io::Read;
 use macroquad::{
     prelude::{Color, FileError, Vec2, WHITE},
     text::measure_text,
-    texture::{draw_texture, draw_texture_ex, load_texture, DrawTextureParams, Texture2D},
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, Texture2D},
 };
 use serde::Deserialize;
 
@@ -50,7 +50,7 @@ struct SceneConfig {
 }
 
 impl Card {
-    fn new(text: String, image: Texture2D) -> Self {
+    const fn new(text: String, image: Texture2D) -> Self {
         Self {
             text,
             image,

@@ -1,7 +1,8 @@
 use macroquad::{
-    prelude::Color,
+    prelude::{Color, Rect, Vec2},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::{draw_text, measure_text},
+    texture::{draw_texture_ex, DrawTextureParams, Texture2D},
 };
 
 use crate::util::{Body, PLAYER_RADIUS, RATIO_W_H};
@@ -67,6 +68,30 @@ pub fn draw_body(screen: &Screen, body: &Body, color: Color) {
         body.position.y,
         PLAYER_RADIUS,
         color,
+    );
+}
+
+pub fn draw_body_texture(
+    screen: &Screen,
+    body: &Body,
+    texture: Texture2D,
+    color: Color,
+    rect: Rect,
+) {
+    draw_texture_ex(
+        texture,
+        (body.position.x - body.form.x_r()) * screen.height + screen.x,
+        (body.position.y - body.form.y_r()) * screen.height + screen.y,
+        color,
+        DrawTextureParams {
+            dest_size: Some(Vec2 {
+                x: 2. * body.form.x_r() * screen.height,
+                y: 2. * body.form.y_r() * screen.height,
+            }),
+            source: Some(rect),
+            flip_x: body.sight.x < 0.,
+            ..Default::default()
+        },
     );
 }
 

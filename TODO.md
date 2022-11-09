@@ -5,7 +5,7 @@ TODOs for this project:
   - [X] Level definition from .yaml
   - [ ] Items
   - [ ] Bosses
-  - [ ] NPC(s?)
+  - [ ] NPC(?)
 - [X] Story mode
   - [X] Basic view of story(LN style)
   - [X] load from .yaml
@@ -17,7 +17,7 @@ TODOs for this project:
 - [ ] Story
   - [X] Main plot
   - [ ] Receipt holder
-  - [ ] NPC(s?)
+  - [ ] NPC(?)
   - [ ] Text
 - [ ] Graphics
   - [ ] Environment graphics

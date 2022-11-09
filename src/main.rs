@@ -59,7 +59,11 @@ async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
             let next = scene.update(move_forward, dt);
             if next {
                 let file = File::open("assets/level_1.yaml").unwrap();
-                *state = State::Battle(Level::from_reader(BufReader::new(file)).expect("TODO"));
+                *state = State::Battle(
+                    Level::from_reader(BufReader::new(file))
+                        .await
+                        .expect("TODO"),
+                );
             }
         }
         State::Battle(battle_state) => {
@@ -81,8 +85,11 @@ async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
                     )
                 } else {
                     State::Battle(
-                        Level::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
-                            .unwrap(),
+                        Level::from_reader(BufReader::new(
+                            File::open("assets/level_1.yaml").unwrap(),
+                        ))
+                        .await
+                        .unwrap(),
                     )
                 };
             }

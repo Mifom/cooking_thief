@@ -4,10 +4,10 @@ use macroquad::{prelude::*, rand::gen_range};
 use serde::Deserialize;
 
 use crate::{
-    graphics::{draw_body, draw_circ, draw_lin, draw_rect, Screen},
+    graphics::{draw_body, draw_body_texture, draw_circ, draw_lin, draw_rect, Screen},
     util::{
-        Ball, Enemy, MoveAction, Player, PlayerAction, BALL_RADIUS, BALL_SPEED, PLAYER_RADIUS,
-        PLAYER_RELOAD, RATIO_W_H, SLASH_LEN, WALL_SIZE,
+        Ball, Enemy, Form, MoveAction, Player, PlayerAction, BALL_RADIUS, BALL_SPEED,
+        PLAYER_RADIUS, PLAYER_RELOAD, RATIO_W_H, SLASH_LEN, WALL_SIZE,
     },
 };
 
@@ -76,17 +76,17 @@ struct DoorConfig {
 }
 
 impl Level {
-    pub fn from_string(str: impl AsRef<str>) -> Result<Self, Error> {
+    pub async fn from_string(str: impl AsRef<str>) -> Result<Self, Error> {
         let config = serde_yaml::from_str(str.as_ref()).map_err(Error::Parse)?;
-        Self::from_config(config)
+        Self::from_config(config).await
     }
 
-    pub fn from_reader<R: Read>(reader: R) -> Result<Self, Error> {
+    pub async fn from_reader<R: Read>(reader: R) -> Result<Self, Error> {
         let config = serde_yaml::from_reader(reader).map_err(Error::Parse)?;
-        Self::from_config(config)
+        Self::from_config(config).await
     }
 
-    fn from_config(MapConfig { rooms }: MapConfig) -> Result<Self, Error> {
+    async fn from_config(MapConfig { rooms }: MapConfig) -> Result<Self, Error> {
         let room_map = rooms
             .iter()
             .map(|room| {
@@ -144,7 +144,7 @@ impl Level {
                 y: randomed,
             },
         };
-        let player = Player::new(position);
+        let player = Player::new(position).await;
         let mut result_rooms = Vec::with_capacity(rooms.len());
         let current_room = push_room(&mut result_rooms, entry_room, &room_map)?;
         Ok(Self {
@@ -227,7 +227,7 @@ impl Level {
                     && (self.player.visible
                         || enemy.body.position.distance(self.player.body.position)
                             < 2. * PLAYER_RADIUS + SLASH_LEN / 2.))
-                    .then_some(self.player.body.position);
+                    .then_some(&self.player.body);
                 let (action, slash) = enemy.actor.action(&enemy.body, player, dt);
                 enemy.body.update(action, dt);
                 enemy.body.collide(&mut self.player.body);
@@ -236,9 +236,8 @@ impl Level {
                     enemy.slash = 5;
                     if self.player.low_health {
                         return Some(false);
-                    } else {
-                        self.player.low_health = true;
                     }
+                    self.player.low_health = true;
                 } else {
                     enemy.slash = clamp(enemy.slash - 1, 0, 5);
                     enemy.reload = clamp(enemy.reload - dt, 0., PLAYER_RELOAD);
@@ -273,6 +272,17 @@ impl Level {
         }
         if player_action.toggle_visibility {
             self.player.visible = !self.player.visible;
+            self.player.body.form = if self.player.visible {
+                Form::Rect {
+                    width: PLAYER_RADIUS,
+                    height: 1.5 * PLAYER_RADIUS,
+                }
+            } else {
+                Form::Rect {
+                    width: 1.5 * PLAYER_RADIUS,
+                    height: 1.5 * PLAYER_RADIUS,
+                }
+            };
         }
         if player_action.shoot && self.player.visible && self.player.reload == 0. {
             self.player.reload = PLAYER_RELOAD;
@@ -306,10 +316,31 @@ impl Level {
             WHITE,
         );
 
-        draw_body(
+        // draw_body(
+        //     screen,
+        //     &self.player.body,
+        //     if self.player.visible { GREEN } else { BLUE },
+        // );
+        draw_body_texture(
             screen,
             &self.player.body,
-            if self.player.visible { GREEN } else { BLUE },
+            self.player.model,
+            WHITE,
+            if self.player.visible {
+                Rect {
+                    x: 10.0,
+                    y: 10.0,
+                    w: 100.0,
+                    h: 150.0,
+                }
+            } else {
+                Rect {
+                    x: 120.0,
+                    y: 10.0,
+                    w: 150.0,
+                    h: 150.0,
+                }
+            },
         );
 
         // INFO: uncomment if want to see sight trace
@@ -410,20 +441,19 @@ fn push_room(
             let room = rooms
                 .iter()
                 .position(|r| r.id == room.id)
-                .map(Ok)
-                .unwrap_or_else(|| push_room(rooms, room, room_map))?;
+                .map_or_else(|| push_room(rooms, room, room_map), Ok)?;
             Ok((direction, room))
         })
         .collect::<Result<_, _>>()?;
     Ok(room_pos)
 }
 impl Direction {
-    fn inverse(&self) -> Direction {
+    const fn inverse(self) -> Self {
         match self {
-            Direction::North => Direction::South,
-            Direction::South => Direction::North,
-            Direction::East => Direction::West,
-            Direction::West => Direction::East,
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::East => Self::West,
+            Self::West => Self::East,
         }
     }
 }

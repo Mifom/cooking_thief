@@ -1,10 +1,10 @@
 use macroquad::prelude::Vec2;
 
-use crate::util::{Body, MoveAction, PLAYER_RADIUS, SLASH_LEN};
+use crate::util::{Body, Form, MoveAction, SLASH_LEN};
 
 enum State {
     Idle,
-    Fight(Vec2),
+    Fight(Vec2, Form),
     LastSeen(Vec2, f32),
 }
 
@@ -14,7 +14,7 @@ pub struct BasicAi {
 }
 
 impl BasicAi {
-    pub fn new(position: Vec2) -> Self {
+    pub const fn new(position: Vec2) -> Self {
         Self {
             position,
             state: State::Idle,
@@ -23,12 +23,12 @@ impl BasicAi {
 }
 
 impl BasicAi {
-    pub fn action(&mut self, enemy: &Body, player: Option<Vec2>, dt: f32) -> (MoveAction, bool) {
-        self.state = if let Some(position) = player {
-            State::Fight(position)
+    pub fn action(&mut self, enemy: &Body, player: Option<&Body>, dt: f32) -> (MoveAction, bool) {
+        self.state = if let Some(body) = player {
+            State::Fight(body.position, body.form)
         } else {
             match self.state {
-                State::Fight(position) => State::LastSeen(position, dt),
+                State::Fight(position, _) => State::LastSeen(position, dt),
                 State::Idle => State::Idle,
                 State::LastSeen(position, time) => {
                     let new_time = time + dt;
@@ -48,13 +48,17 @@ impl BasicAi {
                 },
                 false,
             ),
-            State::Fight(position) => (
-                MoveAction {
-                    move_direction: enemy.move_to(position),
-                    sight: (position - enemy.position).normalize(),
-                },
-                enemy.position.distance(position) < 2. * PLAYER_RADIUS + SLASH_LEN,
-            ),
+            State::Fight(position, form) => {
+                let diff = position - enemy.position;
+                (
+                    MoveAction {
+                        move_direction: enemy.move_to(position),
+                        sight: (position - enemy.position).normalize(),
+                    },
+                    diff.length()
+                        < enemy.form.direction_len(diff) + form.direction_len(diff) + SLASH_LEN,
+                )
+            }
             State::LastSeen(position, _) => (
                 MoveAction {
                     move_direction: enemy.move_to(position),

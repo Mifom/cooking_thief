@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use macroquad::prelude::*;
 
 use crate::ai::BasicAi;
@@ -31,16 +33,65 @@ pub struct PlayerAction {
     pub shoot: bool,
 }
 
+#[derive(Clone, Copy)]
+pub enum Form {
+    Circle { radius: f32 },
+    Rect { width: f32, height: f32 },
+}
+
+impl Form {
+    pub const fn x_r(&self) -> f32 {
+        match self {
+            Self::Circle { radius } => *radius,
+            Self::Rect { width, .. } => *width,
+        }
+    }
+    pub const fn y_r(&self) -> f32 {
+        match self {
+            Self::Circle { radius } => *radius,
+            Self::Rect { height, .. } => *height,
+        }
+    }
+
+    pub fn direction_len(&self, n: Vec2) -> f32 {
+        match self {
+            Self::Circle { radius } => *radius,
+            Self::Rect { width, height } => {
+                let n = n.normalize();
+                let x_ratio = width / n.x.abs();
+                let y_ratio = height / n.y.abs();
+                match x_ratio.total_cmp(&y_ratio) {
+                    Ordering::Less => x_ratio,
+                    _ => y_ratio,
+                }
+            }
+        }
+    }
+}
+
 pub struct Body {
     pub position: Vec2,
+    pub form: Form,
     pub sight: Vec2,
     speed: Speed,
 }
 
 impl Body {
-    pub fn new(position: Vec2) -> Self {
+    pub const fn circle(position: Vec2, radius: f32) -> Self {
         Self {
             position,
+            form: Form::Circle { radius },
+            sight: Vec2 { x: 1., y: 0. },
+            speed: Speed { x: 0, y: 0 },
+        }
+    }
+    pub fn rect(position: Vec2, width: f32, height: f32) -> Self {
+        Self {
+            position,
+            form: Form::Rect {
+                width: width / 2.,
+                height: height / 2.,
+            },
             sight: Vec2 { x: 1., y: 0. },
             speed: Speed { x: 0, y: 0 },
         }
@@ -67,16 +118,14 @@ impl Body {
         self.position.y += PLAYER_MAX_SPEED * (self.speed.y as f32) / (SPEED_STEPS as f32) * dt;
 
         // wall collision
+        let x_wall = self.form.x_r();
+        let y_wall = self.form.y_r();
         self.position.x = clamp(
             self.position.x,
-            WALL_SIZE + PLAYER_RADIUS,
-            RATIO_W_H - WALL_SIZE - PLAYER_RADIUS,
+            WALL_SIZE + x_wall,
+            RATIO_W_H - WALL_SIZE - x_wall,
         );
-        self.position.y = clamp(
-            self.position.y,
-            WALL_SIZE + PLAYER_RADIUS,
-            1. - WALL_SIZE - PLAYER_RADIUS,
-        );
+        self.position.y = clamp(self.position.y, WALL_SIZE + y_wall, 1. - WALL_SIZE - y_wall);
     }
 
     pub fn collide(&mut self, other: &mut Self) {
@@ -88,7 +137,8 @@ impl Body {
 
     pub fn collision(&self, other: &Self) -> Option<Vec2> {
         let diff = self.position - other.position;
-        let penetration = PLAYER_RADIUS - (diff.length() / 2.);
+        let size = self.form.direction_len(diff) + other.form.direction_len(diff);
+        let penetration = (size - diff.length()) / 2.;
         (penetration > 0.).then(|| diff.normalize() * penetration)
     }
 
@@ -116,15 +166,17 @@ pub struct Player {
     pub visible: bool,
     pub reload: f32,
     pub low_health: bool,
+    pub model: Texture2D,
 }
 
 impl Player {
-    pub fn new(position: Vec2) -> Self {
+    pub async fn new(position: Vec2) -> Self {
         Self {
-            body: Body::new(position),
+            body: Body::rect(position, 3. * PLAYER_RADIUS, 3. * PLAYER_RADIUS),
             visible: false,
             reload: 0.,
             low_health: false,
+            model: load_texture("assets/player.png").await.unwrap(),
         }
     }
 }
@@ -144,10 +196,10 @@ pub struct Enemy {
 }
 
 impl Enemy {
-    pub fn new(id: u32, position: Vec2) -> Self {
+    pub const fn new(id: u32, position: Vec2) -> Self {
         Self {
             id,
-            body: Body::new(position),
+            body: Body::circle(position, PLAYER_RADIUS),
             reload: 0.,
             slash: 0,
             actor: BasicAi::new(position),
