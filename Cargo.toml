@@ -10,3 +10,6 @@ authors = ["Mifom <requestdg@gmail.com>"]
 macroquad = "0.3.24"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_yaml = "0.9.14"
+
+[profile.dev.package.'*']
+opt-level = 3

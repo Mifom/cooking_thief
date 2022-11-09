@@ -6,10 +6,14 @@ TODOs for this project:
   - [ ] Items
   - [ ] Bosses
   - [ ] NPC(s?)
+- [X] Story mode
+  - [X] Basic view of story(LN style)
+  - [X] load from .yaml
 - [ ] AI
   - [X] Basic movement
   - [X] State machine to find hidden player
   - [ ] Search in open door(?)
+  - [ ] Boss AI(stopped on bosses) (?)
 - [ ] Story
   - [X] Main plot
   - [ ] Receipt holder

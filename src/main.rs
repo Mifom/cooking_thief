@@ -1,6 +1,7 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
 use graphics::{draw_centered_text, get_screen_size, Screen};
 use level::Level;
+use scene::Scene;
 use std::{fs::File, io::BufReader, process::exit};
 use util::*;
 
@@ -9,17 +10,24 @@ use macroquad::prelude::*;
 mod ai;
 mod graphics;
 mod level;
+mod scene;
 mod util;
 
 enum State {
+    Scene(Scene),
     Battle(Level),
     Restart(bool),
 }
 
 #[macroquad::main("The Truthy Scroll")]
 async fn main() {
-    let file = File::open("assets/test.yaml").unwrap();
-    let mut state = State::Battle(Level::from_reader(BufReader::new(file)).expect("TODO"));
+    let file = File::open("assets/scene_1.yaml").unwrap();
+    let mut state = State::Scene(
+        Scene::from_reader(BufReader::new(file))
+            .await
+            .expect("TODO"),
+    );
+
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
@@ -28,28 +36,54 @@ async fn main() {
         clear_background(BLACK);
         draw_rectangle(screen.x, screen.y, screen.width, screen.height, WHITE);
 
-        change_state(&mut state, &screen, dt);
+        change_state(&mut state, &screen, dt).await;
         draw(&state, &screen);
 
         next_frame().await;
     }
 }
 
-fn change_state(state: &mut State, screen: &Screen, dt: f32) {
+async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
     match state {
+        State::Scene(scene) => {
+            let forward = is_key_pressed(KeyCode::Space)
+                || is_key_pressed(KeyCode::D)
+                || is_mouse_button_pressed(MouseButton::Left);
+            let backward = is_key_pressed(KeyCode::A);
+            let move_forward = match (forward, backward) {
+                (true, false) => Some(true),
+                (false, true) => Some(false),
+                _ => None,
+            };
+            let next = scene.update(move_forward, dt);
+            if next {
+                let file = File::open("assets/level_1.yaml").unwrap();
+                *state = State::Battle(Level::from_reader(BufReader::new(file)).expect("TODO"));
+            }
+        }
         State::Battle(battle_state) => {
             if let Some(win) = change_battle_state(battle_state, screen, dt) {
                 *state = State::Restart(win);
             }
         }
-        State::Restart(_) => {
+        State::Restart(win) => {
             if is_key_pressed(KeyCode::Q) {
                 exit(0)
             } else if is_key_pressed(KeyCode::R) {
-                *state = State::Battle(
-                    Level::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
-                        .unwrap(),
-                );
+                *state = if *win {
+                    State::Scene(
+                        Scene::from_reader(BufReader::new(
+                            File::open("assets/scene_1.yaml").unwrap(),
+                        ))
+                        .await
+                        .expect("TODO"),
+                    )
+                } else {
+                    State::Battle(
+                        Level::from_reader(BufReader::new(File::open("assets/test.yaml").unwrap()))
+                            .unwrap(),
+                    )
+                };
             }
         }
     }
@@ -95,6 +129,7 @@ fn change_battle_state(map: &mut Level, screen: &Screen, dt: f32) -> Option<bool
 /// This function draws the state to the screen
 fn draw(state: &State, screen: &Screen) {
     match state {
+        State::Scene(scene) => scene.draw(screen),
         State::Battle(map) => map.draw(screen),
         State::Restart(win) => draw_centered_text(
             screen,

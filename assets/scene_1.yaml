@@ -1,0 +1,6 @@
+background: back.png
+cards:
+- image: fore.png
+  text: Wow
+- image: fore.png
+  text: It is first scene
