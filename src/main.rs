@@ -48,8 +48,9 @@ async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
         State::Scene(scene) => {
             let forward = is_key_pressed(KeyCode::Space)
                 || is_key_pressed(KeyCode::D)
+                || is_key_pressed(KeyCode::Right)
                 || is_mouse_button_pressed(MouseButton::Left);
-            let backward = is_key_pressed(KeyCode::A);
+            let backward = is_key_pressed(KeyCode::A) || is_key_pressed(KeyCode::Left);
             let move_forward = match (forward, backward) {
                 (true, false) => Some(true),
                 (false, true) => Some(false),
@@ -93,16 +94,16 @@ async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
 /// Returns Some(win) if battle is over
 fn change_battle_state(map: &mut Level, screen: &Screen, dt: f32) -> Option<bool> {
     let mut move_direction = (0, 0);
-    if is_key_down(KeyCode::W) {
+    if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
         move_direction.1 -= 1;
     }
-    if is_key_down(KeyCode::S) {
+    if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
         move_direction.1 += 1;
     }
-    if is_key_down(KeyCode::A) {
+    if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
         move_direction.0 -= 1;
     }
-    if is_key_down(KeyCode::D) {
+    if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
         move_direction.0 += 1;
     }
     let (x_mouse, y_mouse) = {
