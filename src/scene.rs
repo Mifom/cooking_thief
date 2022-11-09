@@ -34,13 +34,13 @@ pub struct Scene {
 struct Card {
     text: String,
     state: State,
-    image: Texture2D,
+    image: Option<Texture2D>,
 }
 
 #[derive(Deserialize)]
 struct CardConfig {
     text: String,
-    image: String,
+    image: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -50,7 +50,7 @@ struct SceneConfig {
 }
 
 impl Card {
-    const fn new(text: String, image: Texture2D) -> Self {
+    const fn new(text: String, image: Option<Texture2D>) -> Self {
         Self {
             text,
             image,
@@ -80,20 +80,22 @@ impl Card {
             State::Printing(letters) => &self.text[0..(letters.floor() as usize)],
             State::View => &self.text,
         };
-        let coef = screen.height / self.image.height();
-        draw_texture_ex(
-            self.image,
-            screen.x + (screen.width - self.image.width() * coef) / 2.,
-            screen.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2 {
-                    x: self.image.width() * coef,
-                    y: screen.height,
-                }),
-                ..Default::default()
-            },
-        );
+        if let Some(image) = self.image {
+            let coef = screen.height / image.height();
+            draw_texture_ex(
+                image,
+                screen.x + (screen.width - image.width() * coef) / 2.,
+                screen.y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2 {
+                        x: image.width() * coef,
+                        y: screen.height,
+                    }),
+                    ..Default::default()
+                },
+            );
+        }
         draw_rect(
             screen,
             0.05,
@@ -155,17 +157,21 @@ impl Scene {
     }
 
     async fn from_config(config: SceneConfig) -> Result<Self, Error> {
-        let background = load_texture(&format!("assets/{}", config.background))
+        let background = load_texture(&format!("assets/{}.png", config.background))
             .await
             .map_err(Error::OpenAsset)?;
         let mut cards = Vec::with_capacity(config.cards.len());
         for card in config.cards {
-            cards.push(Card::new(
-                card.text,
-                load_texture(&format!("assets/{}", card.image))
-                    .await
-                    .map_err(Error::OpenAsset)?,
-            ));
+            let image = if let Some(image) = card.image {
+                Some(
+                    load_texture(&format!("assets/{image}.png"))
+                        .await
+                        .map_err(Error::OpenAsset)?,
+                )
+            } else {
+                None
+            };
+            cards.push(Card::new(card.text, image));
         }
         Ok(Self {
             cards,

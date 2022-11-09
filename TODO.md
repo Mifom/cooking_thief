@@ -28,3 +28,6 @@ TODOs for this project:
   - [ ] Sound effects for actions
 - [ ] HUD
   - [ ] Menu
+  - [ ] Cursor
+- [ ] Bugs
+  - [ ] little render glitch on top of the level

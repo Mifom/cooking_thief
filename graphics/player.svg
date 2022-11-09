@@ -32,15 +32,15 @@
      showborder="true"
      borderlayer="true"
      shape-rendering="auto"
-     inkscape:zoom="1.9779033"
-     inkscape:cx="-11.881268"
-     inkscape:cy="142.06963"
+     inkscape:zoom="1.3079269"
+     inkscape:cx="-180.05593"
+     inkscape:cy="49.696966"
      inkscape:window-width="1908"
      inkscape:window-height="1041"
      inkscape:window-x="5"
      inkscape:window-y="32"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer2" />
+     inkscape:current-layer="g2243" />
   <defs
      id="defs2" />
   <g
@@ -240,13 +240,13 @@
       <ellipse
          style="display:inline;fill:#d40000;stroke-width:0.10101"
          id="ellipse2237"
-         cx="47.679657"
-         cy="91.739494"
+         cx="48.721832"
+         cy="91.709953"
          rx="1.8950794"
          ry="2.2438698" />
       <path
          style="display:inline;fill:#008000;stroke-width:0.0578039"
-         d="m 47.297311,89.562312 -0.0617,-1.190043 c 0,0 0.542343,1.303949 0.967077,1.165661 0.171467,0.08433 1.324183,-1.080763 1.324183,-1.080763 0,0 -0.536721,1.703201 -0.247728,1.797126 0.08487,0.542544 1.605038,0.305835 1.605038,0.305835 l -1.409836,0.625756 z"
+         d="m 48.339488,89.532769 -0.0617,-1.190043 c 0,0 0.542343,1.303949 0.967077,1.165661 0.171467,0.08433 1.324183,-1.080763 1.324183,-1.080763 0,0 -0.536721,1.703201 -0.247728,1.797126 0.08487,0.542544 1.605038,0.305835 1.605038,0.305835 l -1.409836,0.625756 z"
          id="path2239"
          sodipodi:nodetypes="cccccccc" />
       <rect
