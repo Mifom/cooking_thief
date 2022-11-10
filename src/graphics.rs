@@ -110,7 +110,21 @@ pub fn draw_lin(screen: &Screen, x1: f32, y1: f32, x2: f32, y2: f32, width: f32,
         color,
     );
 }
-pub fn draw_centered_text(screen: &Screen, text: &str, y: f32, font: f32, color: Color) {
+
+pub fn draw_txt(screen: &Screen, text: &str, x: f32, y: f32, font: f32, color: Color) {
+    debug_assert!((0. ..=RATIO_W_H).contains(&x));
+    debug_assert!((0. ..=1.).contains(&y));
+    debug_assert!((0. ..=1.).contains(&font));
+    draw_text(
+        text,
+        screen.height * x + screen.x,
+        screen.height * y + screen.y,
+        screen.height * font,
+        color,
+    );
+}
+
+pub fn draw_centered_txt(screen: &Screen, text: &str, y: f32, font: f32, color: Color) {
     debug_assert!((0. ..=1.).contains(&y));
     debug_assert!((0. ..=1.).contains(&font));
     let text_dims = measure_text(text, None, (screen.height * font) as u16, 1.);

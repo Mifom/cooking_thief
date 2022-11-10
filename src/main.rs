@@ -1,5 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use graphics::{draw_centered_text, get_screen_size, Screen};
+use graphics::{draw_centered_txt, get_screen_size, Screen};
 use level::Level;
 use scene::Scene;
 use std::{fs::File, io::BufReader, process::exit};
@@ -139,7 +139,7 @@ fn draw(state: &State, screen: &Screen) {
     match state {
         State::Scene(scene) => scene.draw(screen),
         State::Battle(map) => map.draw(screen),
-        State::Restart(win) => draw_centered_text(
+        State::Restart(win) => draw_centered_txt(
             screen,
             &format!(
                 "You {}, press R to restart",

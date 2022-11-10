@@ -8,11 +8,11 @@ use macroquad::{
 use serde::Deserialize;
 
 use crate::{
-    graphics::{draw_centered_text, draw_rect, Screen},
+    graphics::{draw_rect, draw_txt, Screen},
     util::RATIO_W_H,
 };
 
-const LETTERS_PER_SECOND: f32 = 10.0;
+const LETTERS_PER_SECOND: f32 = 30.0;
 
 enum State {
     Printing(f32),
@@ -106,7 +106,7 @@ impl Card {
         );
         let lines = get_lines(screen, RATIO_W_H - 0.2, 0.075, text);
         for (n, line) in lines.into_iter().enumerate() {
-            draw_centered_text(screen, line, 0.65 + (0.1 * n as f32), 0.075, WHITE);
+            draw_txt(screen, line, 0.1, 0.65 + (0.1 * n as f32), 0.075, WHITE);
         }
     }
 }
@@ -133,7 +133,7 @@ fn get_lines<'a>(
             1.0,
         );
         if dims.width > max_text_width * screen.height {
-            start = end;
+            start = end + 1;
             result.push(&text[start..whitespace]);
         } else {
             end = whitespace;
