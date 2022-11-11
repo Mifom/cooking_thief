@@ -23,6 +23,7 @@ pub enum Error {
 }
 
 pub struct Level {
+    config: LevelConfig,
     rooms: Vec<Room>,
     current_room: usize,
     player: Player,
@@ -43,8 +44,8 @@ pub struct Room {
     doors: HashMap<Direction, usize>,
 }
 
-#[derive(Deserialize)]
-struct MapConfig {
+#[derive(Deserialize, Clone)]
+struct LevelConfig {
     rooms: Vec<RoomConfig>,
 }
 
@@ -86,7 +87,8 @@ impl Level {
         Self::from_config(config).await
     }
 
-    async fn from_config(MapConfig { rooms }: MapConfig) -> Result<Self, Error> {
+    async fn from_config(config: LevelConfig) -> Result<Self, Error> {
+        let rooms = &config.rooms;
         let room_map = rooms
             .iter()
             .map(|room| {
@@ -148,10 +150,14 @@ impl Level {
         let mut result_rooms = Vec::with_capacity(rooms.len());
         let current_room = push_room(&mut result_rooms, entry_room, &room_map)?;
         Ok(Self {
+            config,
             rooms: result_rooms,
             current_room,
             player,
         })
+    }
+    pub async fn restart(&mut self) {
+        *self = Level::from_config(self.config.clone()).await.unwrap();
     }
 
     pub fn update(&mut self, player_action: PlayerAction, dt: f32) -> Option<bool> {
@@ -180,8 +186,14 @@ impl Level {
             .iter()
             .find(|(direction, _)| {
                 let (x_range, y_range) = match direction {
-                    Direction::North => ((0.35..=0.65), (0.0..=WALL_SIZE + 0.05)),
-                    Direction::South => ((0.35..=0.65), ((1.0 - WALL_SIZE - 0.05)..=1.0)),
+                    Direction::North => (
+                        (RATIO_W_H / 2. - 0.15..=RATIO_W_H / 2. + 0.15),
+                        (0.0..=WALL_SIZE + 0.05),
+                    ),
+                    Direction::South => (
+                        (RATIO_W_H / 2. - 0.15..=RATIO_W_H / 2. + 0.15),
+                        ((1.0 - WALL_SIZE - 0.05)..=1.0),
+                    ),
                     Direction::East => {
                         (((RATIO_W_H - WALL_SIZE - 0.05)..=RATIO_W_H), (0.35..=0.65))
                     }
@@ -192,10 +204,16 @@ impl Level {
             });
         if let Some((direction, to)) = door {
             match direction {
-                Direction::North => self.player.body.position.y = 0.1,
-                Direction::South => self.player.body.position.y = 0.9,
-                Direction::East => self.player.body.position.x = 0.1,
-                Direction::West => self.player.body.position.x = RATIO_W_H - 0.1,
+                Direction::North | Direction::South => {
+                    self.player.body.position.y = clamp(1. - self.player.body.position.y, 0.1, 0.9);
+                }
+                Direction::East | Direction::West => {
+                    self.player.body.position.x = clamp(
+                        RATIO_W_H - self.player.body.position.x,
+                        0.1,
+                        RATIO_W_H - 0.1,
+                    );
+                }
             }
             self.current_room = *to;
         }
@@ -219,18 +237,26 @@ impl Level {
 
         for (room_id, room) in self.rooms.iter_mut().enumerate() {
             for enemy in &mut room.enemies {
-                if enemy.dead {
-                    enemy.body.collide(&mut self.player.body);
-                    continue;
-                }
-                let player = (room_id == self.current_room
-                    && (self.player.visible
-                        || enemy.body.position.distance(self.player.body.position)
-                            < 2. * PLAYER_RADIUS + SLASH_LEN / 2.))
-                    .then_some(&self.player.body);
-                let (action, slash) = enemy.actor.action(&enemy.body, player, dt);
+                let (action, slash) = if enemy.dead {
+                    (
+                        MoveAction {
+                            move_direction: (0, 0),
+                            sight: enemy.body.sight,
+                        },
+                        false,
+                    )
+                } else {
+                    let player = (room_id == self.current_room
+                        && (self.player.visible
+                            || enemy.body.position.distance(self.player.body.position)
+                                < 2. * PLAYER_RADIUS + SLASH_LEN / 2.))
+                        .then_some(&self.player.body);
+                    enemy.actor.action(&enemy.body, player, dt)
+                };
                 enemy.body.update(action, dt);
-                enemy.body.collide(&mut self.player.body);
+                if room_id == self.current_room {
+                    enemy.body.collide(&mut self.player.body);
+                }
                 if slash && enemy.reload == 0. {
                     enemy.reload = PLAYER_RELOAD;
                     enemy.slash = 5;

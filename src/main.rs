@@ -1,5 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use graphics::{draw_centered_txt, get_screen_size, Screen};
+use graphics::{draw_centered_txt, draw_rect, get_screen_size, Screen};
 use level::Level;
 use scene::Scene;
 use std::{fs::File, io::BufReader, process::exit};
@@ -15,8 +15,7 @@ mod util;
 
 enum State {
     Scene(Scene),
-    Battle(Level),
-    Restart(bool),
+    Battle(Level, Option<bool>),
 }
 
 #[macroquad::main("The Truthy Scroll")]
@@ -63,35 +62,30 @@ async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
                     Level::from_reader(BufReader::new(file))
                         .await
                         .expect("TODO"),
+                    None,
                 );
             }
         }
-        State::Battle(battle_state) => {
-            if let Some(win) = change_battle_state(battle_state, screen, dt) {
-                *state = State::Restart(win);
-            }
-        }
-        State::Restart(win) => {
-            if is_key_pressed(KeyCode::Q) {
-                exit(0)
-            } else if is_key_pressed(KeyCode::R) {
-                *state = if *win {
-                    State::Scene(
-                        Scene::from_reader(BufReader::new(
-                            File::open("assets/scene_1.yaml").unwrap(),
-                        ))
-                        .await
-                        .expect("TODO"),
-                    )
-                } else {
-                    State::Battle(
-                        Level::from_reader(BufReader::new(
-                            File::open("assets/level_1.yaml").unwrap(),
-                        ))
-                        .await
-                        .unwrap(),
-                    )
-                };
+        State::Battle(level, result) => {
+            if let Some(win) = result {
+                if is_key_pressed(KeyCode::Q) {
+                    exit(0)
+                } else if is_key_pressed(KeyCode::R) {
+                    if *win {
+                        *state = State::Scene(
+                            Scene::from_reader(BufReader::new(
+                                File::open("assets/scene_1.yaml").unwrap(),
+                            ))
+                            .await
+                            .expect("TODO"),
+                        );
+                    } else {
+                        level.restart().await;
+                        *result = None;
+                    }
+                }
+            } else {
+                *result = change_battle_state(level, screen, dt);
             }
         }
     }
@@ -138,17 +132,27 @@ fn change_battle_state(map: &mut Level, screen: &Screen, dt: f32) -> Option<bool
 fn draw(state: &State, screen: &Screen) {
     match state {
         State::Scene(scene) => scene.draw(screen),
-        State::Battle(map) => map.draw(screen),
-        State::Restart(win) => draw_centered_txt(
-            screen,
-            &format!(
-                "You {}, press R to restart",
-                if *win { "win" } else { "lose" }
-            ),
-            0.5,
-            0.1,
-            BLACK,
-        ),
+        State::Battle(level, going) => {
+            level.draw(screen);
+            if let Some(win) = going {
+                let color = if *win {
+                    BLACK
+                } else {
+                    Color::from_rgba(128, 0, 0, 128)
+                };
+                draw_rect(screen, 0., 0., RATIO_W_H, 1., color);
+                draw_centered_txt(
+                    screen,
+                    &format!(
+                        "You {}, press R to restart",
+                        if *win { "win" } else { "lose" }
+                    ),
+                    0.5,
+                    0.1,
+                    WHITE,
+                );
+            }
+        }
     }
     #[cfg(debug_assertions)]
     draw_text(&format!("{}", get_fps()), 10., 40., 30., YELLOW);

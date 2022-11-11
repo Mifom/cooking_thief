@@ -6,5 +6,15 @@ rooms:
     - direction: East
       to: 1
   - id: 1
+    enemies: 2
+    doors:
+    - direction: East
+      to: 2
+  - id: 2
+    enemies: 2
+    doors:
+    - direction: South
+      to: 3
+  - id: 3
     enemies: 1
     doors:
