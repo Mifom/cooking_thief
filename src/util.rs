@@ -69,11 +69,17 @@ impl Form {
     }
 }
 
+pub struct Phrase {
+    pub text: String,
+    pub time: f32,
+}
+
 pub struct Body {
     pub position: Vec2,
     pub form: Form,
     pub sight: Vec2,
     speed: Speed,
+    pub phrase: Option<Phrase>,
 }
 
 impl Body {
@@ -83,6 +89,7 @@ impl Body {
             form: Form::Circle { radius },
             sight: Vec2 { x: 1., y: 0. },
             speed: Speed { x: 0, y: 0 },
+            phrase: None,
         }
     }
     pub fn rect(position: Vec2, width: f32, height: f32) -> Self {
@@ -94,7 +101,12 @@ impl Body {
             },
             sight: Vec2 { x: 1., y: 0. },
             speed: Speed { x: 0, y: 0 },
+            phrase: None,
         }
+    }
+
+    pub fn say(&mut self, phrase: Phrase) {
+        self.phrase = Some(phrase);
     }
 
     pub fn update(&mut self, move_action: MoveAction, dt: f32) {
@@ -126,6 +138,12 @@ impl Body {
             RATIO_W_H - WALL_SIZE - x_wall,
         );
         self.position.y = clamp(self.position.y, WALL_SIZE + y_wall, 1. - WALL_SIZE - y_wall);
+        if let Some(phrase) = &mut self.phrase {
+            phrase.time -= dt;
+            if phrase.time <= 0. {
+                self.phrase = None;
+            }
+        }
     }
 
     pub fn collide(&mut self, other: &mut Self) {
@@ -161,22 +179,56 @@ impl Body {
     }
 }
 
+#[derive(Clone, serde::Deserialize)]
+pub enum ItemKind {
+    Tomato,
+    Sword,
+    Key,
+    Vegetable { name: String, idx: usize },
+}
+
+pub struct Item {
+    pub position: Vec2,
+    pub kind: ItemKind,
+    pub image: Texture2D,
+    pub rect: Rect,
+}
+
+impl Item {
+    pub async fn new(position: Vec2, kind: ItemKind) -> Self {
+        let rect = match kind {
+            ItemKind::Tomato => Rect::new(20., 20., 50., 50.),
+            ItemKind::Sword => Rect::new(80., 20., 100., 120.),
+            ItemKind::Key => Rect::new(200., 20., 60., 60.),
+            ItemKind::Vegetable { idx, .. } => Rect::new(20. + (idx as f32 * 60.), 150., 50., 50.),
+        };
+        Self {
+            position,
+            kind,
+            rect,
+            image: load_texture("assets/items.png").await.unwrap(),
+        }
+    }
+}
+
 pub struct Player {
     pub body: Body,
     pub visible: bool,
     pub reload: f32,
     pub low_health: bool,
     pub model: Texture2D,
+    pub item: Option<Item>,
 }
 
 impl Player {
-    pub async fn new(position: Vec2) -> Self {
+    pub async fn new(position: Vec2, start_item: Option<Item>) -> Self {
         Self {
             body: Body::rect(position, 3. * PLAYER_RADIUS, 3. * PLAYER_RADIUS),
             visible: false,
             reload: 0.,
             low_health: false,
             model: load_texture("assets/player.png").await.unwrap(),
+            item: start_item,
         }
     }
 }

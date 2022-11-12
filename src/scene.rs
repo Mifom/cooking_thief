@@ -8,7 +8,7 @@ use macroquad::{
 use serde::Deserialize;
 
 use crate::{
-    graphics::{draw_rect, draw_txt, Screen},
+    graphics::{draw_rect, draw_txt, get_lines, Screen},
     util::RATIO_W_H,
 };
 
@@ -104,45 +104,11 @@ impl Card {
             0.4,
             Color::from_rgba(0, 0, 0, 128),
         );
-        let lines = get_lines(screen, RATIO_W_H - 0.2, 0.075, text);
+        let (lines, _) = get_lines(screen, RATIO_W_H - 0.2, 0.075, text);
         for (n, line) in lines.into_iter().enumerate() {
             draw_txt(screen, line, 0.1, 0.65 + (0.1 * n as f32), 0.075, WHITE);
         }
     }
-}
-
-fn get_lines<'a>(
-    screen: &Screen,
-    max_text_width: f32,
-    text_size: f32,
-    text: &'a str,
-) -> Vec<&'a str> {
-    let mut result = vec![&text[0..0]];
-    let mut whitespaces: Vec<_> = text
-        .char_indices()
-        .filter_map(|(n, ch)| (ch.is_whitespace()).then_some(n))
-        .collect();
-    whitespaces.push(text.len());
-    let mut start = 0;
-    let mut end = 0;
-    for whitespace in whitespaces {
-        let dims = measure_text(
-            &text[start..whitespace],
-            None,
-            (text_size * screen.height) as u16,
-            1.0,
-        );
-        if dims.width > max_text_width * screen.height {
-            start = end + 1;
-            result.push(&text[start..whitespace]);
-        } else {
-            end = whitespace;
-            if let Some(last) = result.last_mut() {
-                *last = &text[start..end];
-            }
-        }
-    }
-    result
 }
 
 impl Scene {

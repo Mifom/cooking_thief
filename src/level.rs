@@ -6,8 +6,8 @@ use serde::Deserialize;
 use crate::{
     graphics::{draw_body, draw_body_texture, draw_circ, draw_lin, draw_rect, Screen},
     util::{
-        Ball, Enemy, Form, MoveAction, Player, PlayerAction, BALL_RADIUS, BALL_SPEED,
-        PLAYER_RADIUS, PLAYER_RELOAD, RATIO_W_H, SLASH_LEN, WALL_SIZE,
+        Ball, Enemy, Form, Item, ItemKind, MoveAction, Player, PlayerAction, BALL_RADIUS,
+        BALL_SPEED, PLAYER_RADIUS, PLAYER_RELOAD, RATIO_W_H, SLASH_LEN, WALL_SIZE,
     },
 };
 
@@ -47,6 +47,7 @@ pub struct Room {
 #[derive(Deserialize, Clone)]
 struct LevelConfig {
     rooms: Vec<RoomConfig>,
+    starting_item: Option<ItemKind>,
 }
 
 #[derive(Clone, Deserialize)]
@@ -146,7 +147,12 @@ impl Level {
                 y: randomed,
             },
         };
-        let player = Player::new(position).await;
+        let item = if let Some(kind) = &config.starting_item {
+            Some(Item::new(Vec2::new(0., 0.), kind.clone()).await)
+        } else {
+            None
+        };
+        let player = Player::new(position, item).await;
         let mut result_rooms = Vec::with_capacity(rooms.len());
         let current_room = push_room(&mut result_rooms, entry_room, &room_map)?;
         Ok(Self {
@@ -237,13 +243,14 @@ impl Level {
 
         for (room_id, room) in self.rooms.iter_mut().enumerate() {
             for enemy in &mut room.enemies {
-                let (action, slash) = if enemy.dead {
+                let (action, slash, phrase) = if enemy.dead {
                     (
                         MoveAction {
                             move_direction: (0, 0),
                             sight: enemy.body.sight,
                         },
                         false,
+                        None,
                     )
                 } else {
                     let player = (room_id == self.current_room
@@ -254,6 +261,9 @@ impl Level {
                     enemy.actor.action(&enemy.body, player, dt)
                 };
                 enemy.body.update(action, dt);
+                if let Some(phrase) = phrase {
+                    enemy.body.say(phrase);
+                }
                 if room_id == self.current_room {
                     enemy.body.collide(&mut self.player.body);
                 }

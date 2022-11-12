@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   sodipodi:docname="items.svg"
+   inkscape:export-filename="../assets/items.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="2.8303052"
+     inkscape:cx="216.05444"
+     inkscape:cy="54.057774"
+     inkscape:window-width="1908"
+     inkscape:window-height="1041"
+     inkscape:window-x="5"
+     inkscape:window-y="32"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g742"
+       inkscape:label="Tomato"
+       transform="matrix(0.39102248,0,0,0.40696123,0.7850447,3.2707622)">
+      <ellipse
+         style="fill:#d40000;stroke-width:0.264583"
+         id="path215"
+         cx="24.396654"
+         cy="25.340862"
+         rx="12.871429"
+         ry="12.13217" />
+      <path
+         style="fill:#008000;stroke-width:0.264583"
+         d="M 21.153828,13.728205 20.123603,4.9658402 c 0,0 3.641771,6.6716158 6.946092,7.4221698 1.809001,0.410902 10.258303,-5.5880091 10.258303,-5.5880091 0,0 -2.737861,8.2589131 -1.563078,10.2908251 0.771677,1.334698 9.592545,3.503332 9.592545,3.503332 0,0 -8.150276,2.59894 -8.480653,1.977214 -4.09169,-7.700027 -15.722984,-8.843167 -15.722984,-8.843167 z"
+         id="path534"
+         sodipodi:nodetypes="ccscscsc" />
+    </g>
+    <g
+       id="g909"
+       inkscape:label="Sword"
+       transform="matrix(0.76977028,0.66992807,-0.63907181,0.80693705,15.901776,-27.636294)">
+      <rect
+         style="fill:#cccccc;stroke-width:0.264583"
+         id="rect848"
+         width="8.8883963"
+         height="26.823122"
+         x="39.402855"
+         y="5.9689336"
+         ry="4.0136299" />
+      <rect
+         style="fill:#666666;stroke-width:0.264583"
+         id="rect902"
+         width="17.762014"
+         height="4.5136037"
+         x="34.966049"
+         y="29.504391"
+         ry="2.2568018" />
+      <rect
+         style="fill:#666666;stroke-width:0.264583"
+         id="rect904"
+         width="5.7183557"
+         height="10.133124"
+         x="40.987877"
+         y="32.437836"
+         ry="2.2568018" />
+    </g>
+    <g
+       id="g1166"
+       transform="matrix(0.25450623,0.19856576,-0.19431145,0.26007846,50.366352,-8.0700742)"
+       inkscape:label="Key">
+      <rect
+         style="fill:#666666;stroke-width:0.264583"
+         id="rect911"
+         width="7.76018"
+         height="34.486271"
+         x="58.862751"
+         y="6.4564667"
+         ry="0" />
+      <rect
+         style="fill:#666666;stroke-width:0.264583"
+         id="rect913"
+         width="18.491053"
+         height="4.8403883"
+         x="58.834679"
+         y="6.4564667" />
+      <rect
+         style="fill:#666666;stroke-width:0.264583"
+         id="rect915"
+         width="18.491053"
+         height="4.8403883"
+         x="58.834679"
+         y="16.015869" />
+      <circle
+         style="fill:#666666;stroke-width:0.264583"
+         id="path969"
+         cx="62.74284"
+         cy="49.847462"
+         r="11.655696" />
+      <circle
+         style="fill:#ffffff;stroke-width:0.264583"
+         id="path1159"
+         cx="62.74284"
+         cy="49.847462"
+         r="6.5757332" />
+    </g>
+  </g>
+</svg>

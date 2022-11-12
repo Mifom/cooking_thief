@@ -1,5 +1,5 @@
 use macroquad::{
-    prelude::{Color, Rect, Vec2},
+    prelude::{draw_grid, Color, Rect, Vec2, BLACK, RED, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::{draw_text, measure_text},
     texture::{draw_texture_ex, DrawTextureParams, Texture2D},
@@ -69,8 +69,67 @@ pub fn draw_body(screen: &Screen, body: &Body, color: Color) {
         PLAYER_RADIUS,
         color,
     );
+    if let Some(phrase) = &body.phrase {
+        let (lines, max_len) = get_lines(screen, 8. * PLAYER_RADIUS, 0.04, &phrase.text);
+        let start = body.position.y - (lines.len() as f32 * 0.02) - body.form.y_r() - 0.02;
+        draw_rect(
+            screen,
+            body.position.x,
+            start - 0.02,
+            0.04 + max_len,
+            lines.len() as f32 * 0.02 + 0.04,
+            BLACK,
+        );
+        for (n, line) in lines.into_iter().enumerate() {
+            draw_txt(
+                screen,
+                line,
+                body.position.x + 0.02,
+                start + (0.02 * (n + 1) as f32),
+                0.04,
+                WHITE,
+            );
+        }
+    }
 }
 
+pub fn get_lines<'a>(
+    screen: &Screen,
+    max_text_width: f32,
+    text_size: f32,
+    text: &'a str,
+) -> (Vec<&'a str>, f32) {
+    let mut result = vec![&text[0..0]];
+    let mut whitespaces: Vec<_> = text
+        .char_indices()
+        .filter_map(|(n, ch)| (ch.is_whitespace()).then_some(n))
+        .collect();
+    whitespaces.push(text.len());
+    let mut start = 0;
+    let mut end = 0;
+    let mut max_len = 0.;
+    for whitespace in whitespaces {
+        let dims = measure_text(
+            &text[start..whitespace],
+            None,
+            (text_size * screen.height) as u16,
+            1.0,
+        );
+        if dims.width > max_text_width * screen.height {
+            start = end + 1;
+            result.push(&text[start..whitespace]);
+        } else {
+            end = whitespace;
+            if max_len < dims.width {
+                max_len = dims.width;
+            }
+            if let Some(last) = result.last_mut() {
+                *last = &text[start..end];
+            }
+        }
+    }
+    (result, max_len / screen.height)
+}
 pub fn draw_body_texture(
     screen: &Screen,
     body: &Body,
@@ -93,6 +152,28 @@ pub fn draw_body_texture(
             ..Default::default()
         },
     );
+    if let Some(phrase) = &body.phrase {
+        let (lines, max_len) = get_lines(screen, 8. * PLAYER_RADIUS, 0.04, &phrase.text);
+        let start = body.position.y - (lines.len() as f32 * 0.02) - body.form.y_r() - 0.02;
+        draw_rect(
+            screen,
+            body.position.x,
+            start - 0.02,
+            0.04 + max_len,
+            lines.len() as f32 * 0.02 + 0.04,
+            BLACK,
+        );
+        for (n, line) in lines.into_iter().enumerate() {
+            draw_txt(
+                screen,
+                line,
+                body.position.x + 0.02,
+                start + (0.02 * (n + 1) as f32),
+                0.04,
+                WHITE,
+            );
+        }
+    }
 }
 
 pub fn draw_lin(screen: &Screen, x1: f32, y1: f32, x2: f32, y2: f32, width: f32, color: Color) {
