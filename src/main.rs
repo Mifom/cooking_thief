@@ -1,159 +1,92 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use graphics::{draw_centered_txt, draw_rect, get_screen_size, Screen};
-use level::Level;
-use scene::Scene;
-use std::{fs::File, io::BufReader, process::exit};
+use graphics::get_screen_size;
+use level::{draw_phrase, draw_player};
 use util::*;
 
+use bevy_ecs::prelude::*;
 use macroquad::prelude::*;
 
-mod ai;
+use crate::{
+    assets::Assets,
+    graphics::draw_screen,
+    level::{draw_balls, draw_doors, draw_enemies},
+    scene::{draw_scene, update_scene},
+};
+
+mod assets;
 mod graphics;
 mod level;
 mod scene;
 mod util;
 
-enum State {
-    Scene(Scene),
-    Battle(Level, Option<bool>),
+#[derive(Resource)]
+pub enum State {
+    Scene(String),
+    Battle(String),
 }
 
-#[macroquad::main("The Truthy Scroll")]
+#[derive(StageLabel)]
+pub enum Label {
+    First,
+    Update,
+    Draw,
+}
+
+#[macroquad::main("Super cooking simulator")]
 async fn main() {
-    let file = File::open("assets/scene_1.yaml").unwrap();
-    let mut state = State::Scene(
-        Scene::from_reader(BufReader::new(file))
-            .await
-            .expect("TODO"),
+    let mut world = World::new();
+
+    world.insert_resource(Assets::load().await.unwrap());
+    world.insert_resource(Time::default());
+    world.insert_resource(State::Battle("level_1".to_string()));
+    world.insert_resource(Events::<(Entity, MoveAction)>::default());
+
+    let mut schedule = Schedule::default();
+
+    schedule.add_stage(
+        Label::First,
+        SystemStage::parallel().with_system(Events::<(Entity, MoveAction)>::update_system),
+    );
+
+    schedule.add_stage(
+        Label::Update,
+        SystemStage::parallel()
+            .with_system(update_scene)
+            .with_system(change_state)
+            .with_system(load_new_state)
+            .with_system(player_action)
+            .with_system(move_body)
+            .with_system(collide)
+            .with_system(use_doors)
+            .with_system(enemies_actions)
+            .with_system(update_reload)
+            .with_system(update_balls)
+            .with_system(collide_balls)
+            .with_system(update_phrase)
+            .with_system(respawn_on_death),
+    );
+
+    schedule.add_stage(
+        Label::Draw,
+        SystemStage::single_threaded()
+            .with_system(draw_screen)
+            .with_system(draw_scene.after(draw_screen))
+            .with_system(draw_doors.after(draw_screen))
+            .with_system(draw_player.after(draw_doors))
+            .with_system(draw_balls.after(draw_doors))
+            .with_system(draw_enemies.after(draw_doors))
+            .with_system(draw_phrase.after(draw_doors))
+            .with_system(death_screen.at_end()),
     );
 
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
+        world.insert_resource(screen);
+        world.get_resource_mut::<Time>().unwrap().update(dt);
 
-        // Draw screen
-        clear_background(BLACK);
-        draw_rectangle(screen.x, screen.y, screen.width, screen.height, WHITE);
-
-        change_state(&mut state, &screen, dt).await;
-        draw(&state, &screen);
+        schedule.run(&mut world);
 
         next_frame().await;
     }
-}
-
-async fn change_state(state: &mut State, screen: &Screen, dt: f32) {
-    match state {
-        State::Scene(scene) => {
-            let forward = is_key_pressed(KeyCode::Space)
-                || is_key_pressed(KeyCode::D)
-                || is_key_pressed(KeyCode::Right)
-                || is_mouse_button_pressed(MouseButton::Left);
-            let backward = is_key_pressed(KeyCode::A) || is_key_pressed(KeyCode::Left);
-            let move_forward = match (forward, backward) {
-                (true, false) => Some(true),
-                (false, true) => Some(false),
-                _ => None,
-            };
-            let next = scene.update(move_forward, dt);
-            if next {
-                let file = File::open("assets/level_1.yaml").unwrap();
-                *state = State::Battle(
-                    Level::from_reader(BufReader::new(file))
-                        .await
-                        .expect("TODO"),
-                    None,
-                );
-            }
-        }
-        State::Battle(level, result) => {
-            if let Some(win) = result {
-                if is_key_pressed(KeyCode::Q) {
-                    exit(0)
-                } else if is_key_pressed(KeyCode::R) {
-                    if *win {
-                        *state = State::Scene(
-                            Scene::from_reader(BufReader::new(
-                                File::open("assets/scene_1.yaml").unwrap(),
-                            ))
-                            .await
-                            .expect("TODO"),
-                        );
-                    } else {
-                        level.restart().await;
-                        *result = None;
-                    }
-                }
-            } else {
-                *result = change_battle_state(level, screen, dt);
-            }
-        }
-    }
-}
-
-/// This function changes state of battle using the controls
-/// Returns Some(win) if battle is over
-fn change_battle_state(map: &mut Level, screen: &Screen, dt: f32) -> Option<bool> {
-    let mut move_direction = (0, 0);
-    if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
-        move_direction.1 -= 1;
-    }
-    if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
-        move_direction.1 += 1;
-    }
-    if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
-        move_direction.0 -= 1;
-    }
-    if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
-        move_direction.0 += 1;
-    }
-    let (x_mouse, y_mouse) = {
-        let (x_m, y_m) = mouse_position();
-        (
-            clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
-            clamp((y_m - screen.y) / screen.height, 0., 1.),
-        )
-    };
-
-    let player_action = PlayerAction {
-        move_direction,
-        view_point: Vec2 {
-            x: x_mouse,
-            y: y_mouse,
-        },
-        toggle_visibility: is_key_pressed(KeyCode::Space),
-        shoot: is_mouse_button_down(MouseButton::Left),
-    };
-
-    map.update(player_action, dt)
-}
-
-/// This function draws the state to the screen
-fn draw(state: &State, screen: &Screen) {
-    match state {
-        State::Scene(scene) => scene.draw(screen),
-        State::Battle(level, going) => {
-            level.draw(screen);
-            if let Some(win) = going {
-                let color = if *win {
-                    BLACK
-                } else {
-                    Color::from_rgba(128, 0, 0, 128)
-                };
-                draw_rect(screen, 0., 0., RATIO_W_H, 1., color);
-                draw_centered_txt(
-                    screen,
-                    &format!(
-                        "You {}, press R to restart",
-                        if *win { "win" } else { "lose" }
-                    ),
-                    0.5,
-                    0.1,
-                    WHITE,
-                );
-            }
-        }
-    }
-    #[cfg(debug_assertions)]
-    draw_text(&format!("{}", get_fps()), 10., 40., 30., YELLOW);
 }

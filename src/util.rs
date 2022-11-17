@@ -1,8 +1,19 @@
-use std::cmp::Ordering;
+#![allow(clippy::type_complexity)] // To suppress clippy warnings on query types
+use std::{cmp::Ordering, collections::HashMap};
 
-use macroquad::prelude::*;
+use bevy_ecs::{
+    prelude::{Bundle, Component, Entity, EventReader, EventWriter},
+    query::{Or, With, Without},
+    system::{Commands, Query, Res, ResMut, Resource},
+};
+use macroquad::{prelude::*, rand::gen_range};
+use serde::Deserialize;
 
-use crate::ai::BasicAi;
+use crate::{
+    graphics::{draw_centered_txt, draw_rect, Screen},
+    level::push_room,
+    scene::Scene,
+};
 
 pub const RATIO_W_H: f32 = 16. / 9.;
 
@@ -16,24 +27,179 @@ pub const PLAYER_MAX_SPEED: f32 = 0.65;
 pub const PLAYER_RELOAD: f32 = 0.5;
 pub const SLASH_LEN: f32 = 0.02;
 
-struct Speed {
+#[derive(Resource, Debug)]
+pub enum StateChange {
+    Next,
+    Restart,
+}
+
+#[derive(Resource, Default)]
+pub struct Time {
+    pub time: f32,
+    pub dt: f32,
+}
+
+impl Time {
+    pub fn update(&mut self, dt: f32) {
+        self.time += dt;
+        self.dt = dt;
+    }
+}
+
+#[derive(Component)]
+pub struct Velocity(Vec2);
+
+#[derive(Component, Default)]
+pub struct Speed {
     x: i32,
     y: i32,
 }
 
+#[derive(Component)]
+pub struct Position(pub Vec2);
+
+impl Position {
+    pub fn move_to(&self, position: Vec2) -> (i32, i32) {
+        let mut move_direction = (0, 0);
+        if self.0.distance(position) < 1.5 * PLAYER_RADIUS {
+            return move_direction;
+        }
+        if self.0.y > position.y {
+            move_direction.1 = -1;
+        } else if self.0.y < position.y {
+            move_direction.1 = 1;
+        }
+        if self.0.x > position.x {
+            move_direction.0 = -1;
+        } else if self.0.x < position.x {
+            move_direction.0 = 1;
+        }
+        move_direction
+    }
+}
+
+#[derive(Component)]
+pub struct Sight(pub Vec2);
+
+#[derive(Component)]
+pub struct Visible;
+
+#[derive(Component, PartialEq, Eq)]
+pub enum Health {
+    Full,
+    Low,
+    Dead,
+}
+
+impl Health {
+    pub fn decrease(&mut self) {
+        *self = match self {
+            Self::Full => Self::Low,
+            Self::Low | Self::Dead => Self::Dead,
+        };
+    }
+}
+
+#[derive(Component)]
+pub struct Phrase {
+    pub text: String,
+    pub time: f32,
+}
+
+#[derive(Component, Default)]
+pub struct Reload(f32);
+
+#[derive(Component, PartialEq, Eq, Clone, Copy)]
+pub struct Room(pub u8);
+
+#[derive(Component)]
+pub struct Player2;
+
+#[derive(Bundle)]
+pub struct Body2 {
+    pub position: Position,
+    pub form: Form,
+    pub sight: Sight,
+    pub speed: Speed,
+    pub room: Room,
+}
+
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    player: Player2,
+    body: Body2,
+    reload: Reload,
+    health: Health,
+}
+
+#[derive(Component, Default)]
+pub enum EnemyState {
+    Fight(Vec2, Form),
+    LastSeen(Vec2, f32),
+    #[default]
+    Idle,
+}
+#[derive(Component)]
+pub struct Post(pub Vec2);
+
+#[derive(Component)]
+pub struct Enemy2;
+
+#[derive(Bundle)]
+pub struct EnemyBundle {
+    pub enemy: Enemy2,
+    pub body: Body2,
+    pub reload: Reload,
+    // pub slash: i8,
+    pub state: EnemyState,
+    pub post: Post,
+    pub health: Health,
+}
+
+#[derive(Component)]
+pub struct Ball2;
+
+#[derive(Bundle)]
+pub struct BallBundle {
+    ball: Ball2,
+    position: Position,
+    velocity: Velocity,
+    room: Room,
+}
+
+#[derive(Component, Clone, Copy, Hash, PartialEq, Eq, Deserialize)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+impl Direction {
+    const fn inverse(self) -> Self {
+        match self {
+            Self::North => Self::South,
+            Self::South => Self::North,
+            Self::East => Self::West,
+            Self::West => Self::East,
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct Door {
+    pub direction: Direction,
+    pub from: Room,
+    pub to: Room,
+}
+
+#[derive(Clone, Copy)]
 pub struct MoveAction {
     pub move_direction: (i32, i32),
     pub sight: Vec2,
 }
 
-pub struct PlayerAction {
-    pub move_direction: (i32, i32),
-    pub view_point: Vec2,
-    pub toggle_visibility: bool,
-    pub shoot: bool,
-}
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Component)]
 pub enum Form {
     Circle { radius: f32 },
     Rect { width: f32, height: f32 },
@@ -69,200 +235,555 @@ impl Form {
     }
 }
 
-pub struct Phrase {
-    pub text: String,
-    pub time: f32,
+pub fn player_action(
+    mut commands: Commands,
+    screen: Res<Screen>,
+    mut player: Query<
+        (
+            Entity,
+            &Position,
+            Option<&Visible>,
+            &mut Form,
+            &mut Reload,
+            &Room,
+            &Health,
+        ),
+        With<Player2>,
+    >,
+    mut moves: EventWriter<(Entity, MoveAction)>,
+) {
+    let Ok((player_id, position, visible, mut form, mut reload, room, health)) =
+        player.get_single_mut() else {
+        return;
+    };
+    if health == &Health::Dead {
+        return;
+    }
+    let mut move_direction = (0, 0);
+    if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
+        move_direction.1 -= 1;
+    }
+    if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
+        move_direction.1 += 1;
+    }
+    if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
+        move_direction.0 -= 1;
+    }
+    if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
+        move_direction.0 += 1;
+    }
+    let (x_mouse, y_mouse) = {
+        let (x_m, y_m) = mouse_position();
+        (
+            clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
+            clamp((y_m - screen.y) / screen.height, 0., 1.),
+        )
+    };
+    let x_direction = x_mouse - position.0.x;
+    let y_direction = y_mouse - position.0.y;
+    let sight = Vec2 {
+        x: x_direction,
+        y: y_direction,
+    }
+    .normalize_or_zero();
+    let move_action = MoveAction {
+        move_direction,
+        sight,
+    };
+
+    moves.send((player_id, move_action));
+
+    if is_key_pressed(KeyCode::Space) {
+        *form = if visible.is_some() {
+            commands.entity(player_id).remove::<Visible>();
+            Form::Rect {
+                width: 1.5 * PLAYER_RADIUS,
+                height: 1.5 * PLAYER_RADIUS,
+            }
+        } else {
+            commands.entity(player_id).insert(Visible);
+            Form::Rect {
+                width: PLAYER_RADIUS,
+                height: 1.5 * PLAYER_RADIUS,
+            }
+        };
+    }
+    if is_mouse_button_down(MouseButton::Left) && visible.is_some() && reload.0 == 0. {
+        reload.0 = PLAYER_RELOAD;
+        let position = position.0 + (move_action.sight * PLAYER_RADIUS);
+        commands.spawn(BallBundle {
+            position: Position(position),
+            ball: Ball2,
+            velocity: Velocity(move_action.sight * BALL_SPEED),
+            room: *room,
+        });
+    }
 }
 
-pub struct Body {
-    pub position: Vec2,
-    pub form: Form,
-    pub sight: Vec2,
-    speed: Speed,
-    pub phrase: Option<Phrase>,
-}
-
-impl Body {
-    pub const fn circle(position: Vec2, radius: f32) -> Self {
-        Self {
-            position,
-            form: Form::Circle { radius },
-            sight: Vec2 { x: 1., y: 0. },
-            speed: Speed { x: 0, y: 0 },
-            phrase: None,
+pub fn enemies_actions(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut moves: EventWriter<(Entity, MoveAction)>,
+    mut enemies: Query<
+        (
+            Entity,
+            &Position,
+            &Form,
+            &mut Reload,
+            &mut EnemyState,
+            &Post,
+            &Health,
+            &Room,
+        ),
+        (With<Enemy2>, Without<Player2>),
+    >,
+    mut player: Query<
+        (&Position, &Form, &mut Health, Option<&Visible>, &Room),
+        (With<Player2>, Without<Enemy2>),
+    >,
+) {
+    let Ok((player_position, player_form, mut player_health, player_visible, player_room) )=
+        player.get_single_mut() else {
+        return;
+    };
+    for (enemy_id, position, form, mut reload, mut state, post, health, room) in &mut enemies {
+        if matches!(health, Health::Dead) {
+            continue;
         }
-    }
-    pub fn rect(position: Vec2, width: f32, height: f32) -> Self {
-        Self {
-            position,
-            form: Form::Rect {
-                width: width / 2.,
-                height: height / 2.,
-            },
-            sight: Vec2 { x: 1., y: 0. },
-            speed: Speed { x: 0, y: 0 },
-            phrase: None,
+        let player_visible = player_room == room
+            && (player_visible.is_some()
+                || position.0.distance(player_position.0) < 2. * PLAYER_RADIUS + SLASH_LEN / 2.);
+        let mut phrase = None;
+        *state = if player_visible {
+            if !matches!(*state, EnemyState::Fight(_, _)) {
+                phrase = Some(Phrase {
+                    text: "Here you are!".to_owned(),
+                    time: 1.,
+                });
+            }
+            EnemyState::Fight(player_position.0, *player_form)
+        } else {
+            match *state {
+                EnemyState::Fight(position, _) => {
+                    phrase = Some(Phrase {
+                        text: "Where is he?".to_owned(),
+                        time: 2.,
+                    });
+                    EnemyState::LastSeen(position, time.dt)
+                }
+                EnemyState::Idle => EnemyState::Idle,
+                EnemyState::LastSeen(position, timer) => {
+                    let new_timer = timer + time.dt;
+                    if new_timer > 5. {
+                        phrase = Some(Phrase {
+                            text: "Must've been wind".to_owned(),
+                            time: 2.,
+                        });
+                        EnemyState::Idle
+                    } else {
+                        EnemyState::LastSeen(position, new_timer)
+                    }
+                }
+            }
+        };
+        if let Some(phrase) = phrase {
+            if let Some(mut entity) = commands.get_entity(enemy_id) {
+                entity.insert(phrase);
+            }
         }
-    }
-
-    pub fn say(&mut self, phrase: Phrase) {
-        self.phrase = Some(phrase);
-    }
-
-    pub fn update(&mut self, move_action: MoveAction, dt: f32) {
-        self.sight = move_action.sight.normalize();
-        self.speed.x += 2 * move_action.move_direction.0;
-        self.speed.y += 2 * move_action.move_direction.1;
-
-        match self.speed.x.cmp(&0) {
-            std::cmp::Ordering::Less => self.speed.x += 1,
-            std::cmp::Ordering::Greater => self.speed.x -= 1,
-            _ => {}
-        }
-        self.speed.x = clamp(self.speed.x, -SPEED_STEPS, SPEED_STEPS);
-        match self.speed.y.cmp(&0) {
-            std::cmp::Ordering::Less => self.speed.y += 1,
-            std::cmp::Ordering::Greater => self.speed.y -= 1,
-            _ => {}
-        }
-        self.speed.y = clamp(self.speed.y, -SPEED_STEPS, SPEED_STEPS);
-        self.position.x += PLAYER_MAX_SPEED * (self.speed.x as f32) / (SPEED_STEPS as f32) * dt;
-        self.position.y += PLAYER_MAX_SPEED * (self.speed.y as f32) / (SPEED_STEPS as f32) * dt;
-
-        // wall collision
-        let x_wall = self.form.x_r();
-        let y_wall = self.form.y_r();
-        self.position.x = clamp(
-            self.position.x,
-            WALL_SIZE + x_wall,
-            RATIO_W_H - WALL_SIZE - x_wall,
-        );
-        self.position.y = clamp(self.position.y, WALL_SIZE + y_wall, 1. - WALL_SIZE - y_wall);
-        if let Some(phrase) = &mut self.phrase {
-            phrase.time -= dt;
-            if phrase.time <= 0. {
-                self.phrase = None;
+        let (move_action, slash) = match *state {
+            EnemyState::Idle => (
+                MoveAction {
+                    move_direction: position.move_to(post.0),
+                    sight: Vec2 { x: 1., y: 0. },
+                },
+                false,
+            ),
+            EnemyState::Fight(player_position, player_form) => {
+                let diff = player_position - position.0;
+                (
+                    MoveAction {
+                        move_direction: position.move_to(player_position),
+                        sight: (player_position - position.0).normalize(),
+                    },
+                    diff.length()
+                        < form.direction_len(diff) + player_form.direction_len(diff) + SLASH_LEN,
+                )
+            }
+            EnemyState::LastSeen(last_position, _) => (
+                MoveAction {
+                    move_direction: position.move_to(last_position),
+                    sight: Vec2 { x: 1., y: 0. },
+                },
+                false,
+            ),
+        };
+        moves.send((enemy_id, move_action));
+        if slash && reload.0 == 0. {
+            reload.0 = PLAYER_RELOAD;
+            if player_visible {
+                player_health.decrease();
             }
         }
     }
-
-    pub fn collide(&mut self, other: &mut Self) {
-        if let Some(shift) = self.collision(other) {
-            self.position += shift;
-            other.position -= shift;
-        }
-    }
-
-    pub fn collision(&self, other: &Self) -> Option<Vec2> {
-        let diff = self.position - other.position;
-        let size = self.form.direction_len(diff) + other.form.direction_len(diff);
-        let penetration = (size - diff.length()) / 2.;
-        (penetration > 0.).then(|| diff.normalize() * penetration)
-    }
-
-    pub fn move_to(&self, position: Vec2) -> (i32, i32) {
-        let mut move_direction = (0, 0);
-        if self.position.distance(position) < 1.5 * PLAYER_RADIUS {
-            return move_direction;
-        }
-        if self.position.y > position.y {
-            move_direction.1 -= 1;
-        } else if self.position.y < position.y {
-            move_direction.1 += 1;
-        }
-        if self.position.x > position.x {
-            move_direction.0 -= 1;
-        } else if self.position.x < position.x {
-            move_direction.0 += 1;
-        }
-        move_direction
-    }
 }
-
-#[derive(Clone, serde::Deserialize)]
-pub enum ItemKind {
-    Tomato,
-    Sword,
-    Key,
-    Vegetable { name: String, idx: usize },
-}
-
-pub struct Item {
-    pub position: Vec2,
-    pub kind: ItemKind,
-    pub image: Texture2D,
-    pub rect: Rect,
-}
-
-impl Item {
-    pub async fn new(position: Vec2, kind: ItemKind) -> Self {
-        let rect = match kind {
-            ItemKind::Tomato => Rect::new(20., 20., 50., 50.),
-            ItemKind::Sword => Rect::new(80., 20., 100., 120.),
-            ItemKind::Key => Rect::new(200., 20., 60., 60.),
-            ItemKind::Vegetable { idx, .. } => Rect::new(20. + (idx as f32 * 60.), 150., 50., 50.),
-        };
-        Self {
-            position,
-            kind,
-            rect,
-            image: load_texture("assets/items.png").await.unwrap(),
+pub fn use_doors(
+    doors: Query<&Door>,
+    mut player: Query<(&mut Position, &mut Room), With<Player2>>,
+) {
+    let Ok((mut position, mut room)) = player.get_single_mut() else {
+        return;
+    };
+    for door in doors.iter() {
+        if door.from == *room {
+            let (x_range, y_range) = match door.direction {
+                Direction::North => (
+                    (RATIO_W_H / 2. - 0.15..=RATIO_W_H / 2. + 0.15),
+                    (0.0..=WALL_SIZE + 0.05),
+                ),
+                Direction::South => (
+                    (RATIO_W_H / 2. - 0.15..=RATIO_W_H / 2. + 0.15),
+                    ((1.0 - WALL_SIZE - 0.05)..=1.0),
+                ),
+                Direction::East => (((RATIO_W_H - WALL_SIZE - 0.05)..=RATIO_W_H), (0.35..=0.65)),
+                Direction::West => ((0.0..=(WALL_SIZE + 0.05)), (0.35..=0.65)),
+            };
+            if x_range.contains(&position.0.x) && y_range.contains(&position.0.y) {
+                match door.direction {
+                    Direction::North | Direction::South => {
+                        position.0.y = clamp(1. - position.0.y, 0.1, 0.9);
+                    }
+                    Direction::East | Direction::West => {
+                        position.0.x = clamp(RATIO_W_H - position.0.x, 0.1, RATIO_W_H - 0.1);
+                    }
+                }
+                *room = door.to;
+            }
         }
     }
 }
 
-pub struct Player {
-    pub body: Body,
-    pub visible: bool,
-    pub reload: f32,
-    pub low_health: bool,
-    pub model: Texture2D,
-    pub item: Option<Item>,
-}
+pub fn move_body(
+    mut bodies: Query<(Entity, &mut Sight, &mut Position, &mut Speed)>,
+    time: Res<Time>,
+    mut actions: EventReader<(Entity, MoveAction)>,
+) {
+    for (action_entity, move_action) in actions.iter() {
+        for (entity, mut sight, mut position, mut speed) in &mut bodies {
+            sight.0 = move_action.sight;
+            if *action_entity == entity {
+                speed.x += 2 * move_action.move_direction.0;
+                speed.y += 2 * move_action.move_direction.1;
 
-impl Player {
-    pub async fn new(position: Vec2, start_item: Option<Item>) -> Self {
-        Self {
-            body: Body::rect(position, 3. * PLAYER_RADIUS, 3. * PLAYER_RADIUS),
-            visible: false,
-            reload: 0.,
-            low_health: false,
-            model: load_texture("assets/player.png").await.unwrap(),
-            item: start_item,
+                match speed.x.cmp(&0) {
+                    std::cmp::Ordering::Less => speed.x += 1,
+                    std::cmp::Ordering::Greater => speed.x -= 1,
+                    _ => {}
+                }
+                speed.x = clamp(speed.x, -SPEED_STEPS, SPEED_STEPS);
+                match speed.y.cmp(&0) {
+                    std::cmp::Ordering::Less => speed.y += 1,
+                    std::cmp::Ordering::Greater => speed.y -= 1,
+                    _ => {}
+                }
+                speed.y = clamp(speed.y, -SPEED_STEPS, SPEED_STEPS);
+                position.0.x +=
+                    PLAYER_MAX_SPEED * (speed.x as f32) / (SPEED_STEPS as f32) * time.dt;
+                position.0.y +=
+                    PLAYER_MAX_SPEED * (speed.y as f32) / (SPEED_STEPS as f32) * time.dt;
+
+                break;
+            }
         }
     }
 }
 
-pub struct Ball {
-    pub position: Vec2,
-    pub direction: Vec2,
+pub fn collide(mut bodies: Query<(Entity, &mut Position, &Form, &Room)>) {
+    let mut shifts = HashMap::new();
+    for (left_id, Position(left_position), left_form, left_room) in bodies.iter() {
+        for (right_id, Position(right_position), right_form, right_room) in bodies.iter() {
+            if left_id == right_id || left_room != right_room {
+                shifts.entry(left_id).or_default();
+                shifts.entry(right_id).or_default();
+                continue;
+            }
+
+            let diff = *left_position - *right_position;
+            let size = left_form.direction_len(diff) + right_form.direction_len(diff);
+            let penetration = (size - diff.length()) / 2.;
+
+            if penetration > 0. {
+                let shift = diff.normalize() * penetration;
+                shifts
+                    .entry(left_id)
+                    .and_modify(|v| *v += shift)
+                    .or_insert_with(|| shift);
+                shifts
+                    .entry(right_id)
+                    .and_modify(|v| *v -= shift)
+                    .or_insert_with(|| -shift);
+            }
+        }
+    }
+    for (entity, mut position, form, _) in &mut bodies {
+        position.0 += shifts[&entity];
+        let x_wall = form.x_r();
+        let y_wall = form.y_r();
+        position.0.x = clamp(
+            position.0.x,
+            WALL_SIZE + x_wall,
+            RATIO_W_H - WALL_SIZE - x_wall,
+        );
+        position.0.y = clamp(position.0.y, WALL_SIZE + y_wall, 1. - WALL_SIZE - y_wall);
+    }
 }
 
-pub struct Enemy {
-    pub id: u32,
-    pub body: Body,
-    pub reload: f32,
-    pub slash: i8,
-    pub actor: BasicAi,
-    pub dead: bool,
+pub fn update_reload(time: Res<Time>, mut reloads: Query<&mut Reload>) {
+    for mut reload in &mut reloads {
+        reload.0 = clamp(reload.0 - time.dt, 0., reload.0);
+    }
 }
 
-impl Enemy {
-    pub const fn new(id: u32, position: Vec2) -> Self {
-        Self {
-            id,
-            body: Body::circle(position, PLAYER_RADIUS),
-            reload: 0.,
-            slash: 0,
-            actor: BasicAi::new(position),
-            dead: false,
+pub fn update_phrase(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut phrases: Query<(Entity, &mut Phrase, &Health)>,
+) {
+    for (entity, mut phrase, health) in &mut phrases {
+        phrase.time -= time.dt;
+        if phrase.time <= 0. || health == &Health::Dead {
+            commands.entity(entity).remove::<Phrase>();
         }
     }
 }
 
-impl PartialEq for Enemy {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+pub fn update_balls(time: Res<Time>, mut balls: Query<(&mut Position, &Velocity), With<Ball2>>) {
+    for (mut position, Velocity(velocity)) in &mut balls {
+        position.0 += *velocity * time.dt;
     }
 }
-impl Eq for Enemy {}
+
+pub fn collide_balls(
+    mut commands: Commands,
+    balls: Query<(Entity, &Position, &Room), With<Ball2>>,
+    mut enemies: Query<(&Position, &Form, &mut Health, &Room), With<Enemy2>>,
+) {
+    'outer: for (ball_id, Position(ball_position), Room(ball_room)) in balls.into_iter() {
+        for (Position(enemy_position), enemy_form, mut enemy_health, Room(enemy_room)) in
+            &mut enemies
+        {
+            if ball_room != enemy_room {
+                continue;
+            }
+            let diff = *ball_position - *enemy_position;
+            if diff.length() < BALL_RADIUS + enemy_form.direction_len(diff) {
+                commands.entity(ball_id).despawn();
+                enemy_health.decrease();
+                continue 'outer;
+            }
+        }
+
+        if ball_position.x < WALL_SIZE + BALL_RADIUS
+            || ball_position.x > RATIO_W_H - WALL_SIZE - BALL_RADIUS
+            || ball_position.y < WALL_SIZE + BALL_RADIUS
+            || ball_position.y > 1. - WALL_SIZE - BALL_RADIUS
+        {
+            commands.entity(ball_id).despawn();
+        }
+    }
+}
+pub fn change_state(
+    mut state: ResMut<crate::State>,
+    state_change: Option<Res<StateChange>>,
+    mut commands: Commands,
+    entities: Query<Entity, Or<(With<Enemy2>, With<Player2>, With<Ball2>, With<Door>)>>,
+) {
+    if let Some(state_change) = state_change {
+        commands.remove_resource::<StateChange>();
+
+        for entity in entities.iter() {
+            commands.entity(entity).despawn();
+        }
+        commands.remove_resource::<Scene>();
+
+        match *state_change {
+            StateChange::Next => match state.as_ref() {
+                crate::State::Scene(_) => *state = crate::State::Battle("level_1".to_string()),
+                crate::State::Battle(_) => *state = crate::State::Scene("scene_1".to_string()),
+            },
+            StateChange::Restart => match state.as_ref() {
+                crate::State::Scene(_) => *state = crate::State::Scene("scene_1".to_string()),
+                crate::State::Battle(_) => *state = crate::State::Battle("level_1".to_string()),
+            },
+        }
+    }
+}
+
+pub fn load_new_state(
+    assets: Res<crate::assets::Assets>,
+    state: Res<crate::State>,
+    mut commands: Commands,
+) {
+    if state.is_changed() {
+        match state.as_ref() {
+            crate::State::Scene(name) => {
+                let scene = assets.scenes.get(name).unwrap();
+                commands.insert_resource(scene.clone());
+            }
+            crate::State::Battle(name) => {
+                let config = assets.levels.get(name).unwrap();
+
+                let rooms = &config.rooms;
+                let room_map = rooms
+                    .iter()
+                    .map(|room| {
+                        (
+                            room,
+                            rooms
+                                .iter()
+                                .filter_map(|connected| {
+                                    room.doors
+                                        .iter()
+                                        .find(|door| door.to == connected.id)
+                                        .map(|door| (door.direction, connected))
+                                        .or_else(|| {
+                                            connected
+                                                .doors
+                                                .iter()
+                                                .find(|door| door.to == room.id)
+                                                .map(|door| (door.direction.inverse(), connected))
+                                        })
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                    .collect::<HashMap<_, _>>();
+
+                let mut enters: Vec<_> = rooms.iter().filter(|room| room.enter.is_some()).collect();
+                let entry_room = match enters.len() {
+                    1 => enters.pop().unwrap(),
+                    // 0 => return Err(Error::NoEntry),
+                    // _ => {
+                    //     return Err(Error::MoreThanOneEntry(
+                    //         enters.iter().map(|room| room.id).collect(),
+                    //     ))
+                    // }
+                    _ => panic!("not one enter"),
+                };
+                let Some(enter) = entry_room.enter else {
+                    unreachable!()
+                };
+                let randomed = gen_range(0.35, 0.65);
+                let position = match enter {
+                    Direction::North => Vec2 {
+                        x: randomed,
+                        y: 0.1,
+                    },
+                    Direction::South => Vec2 {
+                        x: randomed,
+                        y: 0.9,
+                    },
+                    Direction::West => Vec2 {
+                        x: 0.1,
+                        y: randomed,
+                    },
+                    Direction::East => Vec2 {
+                        x: 0.9,
+                        y: randomed,
+                    },
+                };
+                let mut result_rooms = Vec::with_capacity(rooms.len());
+                let current_room =
+                    push_room(&mut result_rooms, entry_room, &room_map).unwrap() as u8;
+                let player = PlayerBundle {
+                    player: Player2,
+                    body: Body2 {
+                        position: Position(position),
+                        form: Form::Rect {
+                            width: 1.5 * PLAYER_RADIUS,
+                            height: 1.5 * PLAYER_RADIUS,
+                        },
+                        sight: Sight(Vec2::new(1., 0.)),
+                        speed: Speed::default(),
+                        room: Room(current_room),
+                    },
+                    reload: Reload::default(),
+                    health: Health::Full,
+                };
+                commands.spawn(player);
+                for room in result_rooms {
+                    for enemy in room.1.into_iter() {
+                        commands.spawn(enemy);
+                    }
+                    for door in room.2.into_iter() {
+                        commands.spawn(door);
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn respawn_on_death(player: Query<&Health, With<Player2>>, mut commands: Commands) {
+    if player
+        .get_single()
+        .map(|health| health != &Health::Dead)
+        .unwrap_or_default()
+    {
+        return;
+    };
+    if is_key_pressed(KeyCode::R) {
+        commands.insert_resource(StateChange::Restart);
+    }
+}
+
+pub fn death_screen(player: Query<&Health, With<Player2>>, screen: Res<Screen>) {
+    if player
+        .get_single()
+        .map(|health| health != &Health::Dead)
+        .unwrap_or_default()
+    {
+        return;
+    };
+    draw_rect(
+        &screen,
+        0.,
+        0.,
+        RATIO_W_H,
+        1.,
+        Color::from_rgba(128, 0, 0, 128),
+    );
+    draw_centered_txt(&screen, "You're dead. Press R to continue", 0.5, 0.1, WHITE);
+}
+
+// #[derive(Clone, serde::Deserialize)]
+// pub enum ItemKind {
+//     Tomato,
+//     Sword,
+//     Key,
+//     Vegetable { name: String, idx: usize },
+// }
+
+// pub struct Item {
+//     pub position: Vec2,
+//     pub kind: ItemKind,
+//     pub image: Texture2D,
+//     pub rect: Rect,
+// }
+
+// impl Item {
+//     pub async fn new(position: Vec2, kind: ItemKind) -> Self {
+//         let rect = match kind {
+//             ItemKind::Tomato => Rect::new(20., 20., 50., 50.),
+//             ItemKind::Sword => Rect::new(80., 20., 100., 120.),
+//             ItemKind::Key => Rect::new(200., 20., 60., 60.),
+//             ItemKind::Vegetable { idx, .. } => Rect::new(20. + (idx as f32 * 60.), 150., 50., 50.),
+//         };
+//         Self {
+//             position,
+//             kind,
+//             rect,
+//             image: load_texture("assets/items.png").await.unwrap(),
+//         }
+//     }
+// }
