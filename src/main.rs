@@ -1,6 +1,6 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
 use graphics::get_screen_size;
-use level::{draw_phrase, draw_player};
+use level::{draw_crates, draw_phrase, draw_player};
 use util::*;
 
 use bevy_ecs::prelude::*;
@@ -44,11 +44,6 @@ async fn main() {
     let mut schedule = Schedule::default();
 
     schedule.add_stage(
-        Label::First,
-        SystemStage::parallel().with_system(Events::<(Entity, MoveAction)>::update_system),
-    );
-
-    schedule.add_stage(
         Label::Update,
         SystemStage::parallel()
             .with_system(update_scene)
@@ -63,6 +58,7 @@ async fn main() {
             .with_system(update_balls)
             .with_system(collide_balls)
             .with_system(update_phrase)
+            .with_system(swap_items)
             .with_system(respawn_on_death),
     );
 
@@ -72,9 +68,10 @@ async fn main() {
             .with_system(draw_screen)
             .with_system(draw_scene.after(draw_screen))
             .with_system(draw_doors.after(draw_screen))
-            .with_system(draw_player.after(draw_doors))
-            .with_system(draw_balls.after(draw_doors))
-            .with_system(draw_enemies.after(draw_doors))
+            .with_system(draw_player.after(draw_doors).before(draw_phrase))
+            .with_system(draw_balls.after(draw_doors).before(draw_phrase))
+            .with_system(draw_enemies.after(draw_doors).before(draw_phrase))
+            .with_system(draw_crates.after(draw_doors).before(draw_phrase))
             .with_system(draw_phrase.after(draw_doors))
             .with_system(death_screen.at_end()),
     );
@@ -84,6 +81,10 @@ async fn main() {
         let screen = get_screen_size(screen_width(), screen_height());
         world.insert_resource(screen);
         world.get_resource_mut::<Time>().unwrap().update(dt);
+        world
+            .get_resource_mut::<Events<(Entity, MoveAction)>>()
+            .unwrap()
+            .update();
 
         schedule.run(&mut world);
 

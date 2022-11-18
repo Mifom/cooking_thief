@@ -3,8 +3,7 @@ TODOs for this project:
 - [ ] Level Design
   - [X] Doors
   - [X] Level definition from .yaml
-  - [ ] Items
-  - [ ] Bosses
+  - [X] Items
   - [ ] NPC(?)
 - [X] Story mode
   - [X] Basic view of story(LN style)
@@ -13,7 +12,6 @@ TODOs for this project:
   - [X] Basic movement
   - [X] State machine to find hidden player
   - [ ] Search in open door(?)
-  - [ ] Boss AI(stopped on bosses) (?)
 - [ ] Story
   - [X] Main plot
   - [ ] Receipt holder

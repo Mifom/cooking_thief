@@ -27,9 +27,9 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="2.8303052"
-     inkscape:cx="216.05444"
-     inkscape:cy="54.057774"
+     inkscape:zoom="0.7025898"
+     inkscape:cx="668.24198"
+     inkscape:cy="327.36029"
      inkscape:window-width="1908"
      inkscape:window-height="1041"
      inkscape:window-x="5"
@@ -126,6 +126,23 @@
          cx="62.74284"
          cy="49.847462"
          r="6.5757332" />
+    </g>
+    <g
+       id="g181"
+       inkscape:label="Tomato"
+       transform="matrix(0.39102248,0,0,0.40696123,0.78504473,37.666596)">
+      <ellipse
+         style="fill:#d40000;stroke-width:0.264583"
+         id="ellipse177"
+         cx="24.396654"
+         cy="25.340862"
+         rx="12.871429"
+         ry="12.13217" />
+      <path
+         style="fill:#008000;stroke-width:0.264583"
+         d="M 21.153828,13.728205 20.123603,4.9658402 c 0,0 3.641771,6.6716158 6.946092,7.4221698 1.809001,0.410902 10.258303,-5.5880091 10.258303,-5.5880091 0,0 -2.737861,8.2589131 -1.563078,10.2908251 0.771677,1.334698 9.592545,3.503332 9.592545,3.503332 0,0 -8.150276,2.59894 -8.480653,1.977214 -4.09169,-7.700027 -15.722984,-8.843167 -15.722984,-8.843167 z"
+         id="path179"
+         sodipodi:nodetypes="ccscscsc" />
     </g>
   </g>
 </svg>

@@ -18,3 +18,7 @@ rooms:
   - id: 3
     enemies: 1
     doors:
+    items:
+    - !Vegetable
+      name: tomato
+      idx: 0

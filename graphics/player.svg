@@ -33,8 +33,8 @@
      borderlayer="true"
      shape-rendering="auto"
      inkscape:zoom="1.3079269"
-     inkscape:cx="-180.05593"
-     inkscape:cy="49.696966"
+     inkscape:cx="-238.16316"
+     inkscape:cy="74.163166"
      inkscape:window-width="1908"
      inkscape:window-height="1041"
      inkscape:window-x="5"
@@ -138,20 +138,6 @@
          y="10.415866"
          ry="4.4546924"
          transform="matrix(0.67922009,0,0,0.78733325,42.070794,69.016932)" />
-      <ellipse
-         style="display:inline;fill:#d40000;stroke-width:0.138128"
-         id="path653"
-         cx="9.237937"
-         cy="30.101799"
-         rx="2.7900815"
-         ry="2.849962"
-         transform="matrix(0.67922009,0,0,0.78733325,42.070794,69.016932)" />
-      <path
-         style="display:inline;fill:#008000;stroke-width:0.0790446"
-         d="m 8.6750169,27.336535 -0.09084,-1.511486 c 0,0 0.79848,1.656159 1.4238061,1.480518 0.252446,0.107102 1.949563,-1.372688 1.949563,-1.372688 0,0 -0.790202,2.163253 -0.364723,2.282548 0.124956,0.689091 2.363059,0.388444 2.363059,0.388444 l -2.075669,0.79478 z"
-         id="path1784"
-         sodipodi:nodetypes="cccccccc"
-         transform="matrix(0.67922009,0,0,0.78733325,42.070794,69.016932)" />
       <rect
          style="display:inline;fill:#999999;stroke-width:0.0539375"
          id="rect1498"
@@ -237,18 +223,6 @@
          x="52.756401"
          y="77.21769"
          ry="3.5073273" />
-      <ellipse
-         style="display:inline;fill:#d40000;stroke-width:0.10101"
-         id="ellipse2237"
-         cx="48.721832"
-         cy="91.709953"
-         rx="1.8950794"
-         ry="2.2438698" />
-      <path
-         style="display:inline;fill:#008000;stroke-width:0.0578039"
-         d="m 48.339488,89.532769 -0.0617,-1.190043 c 0,0 0.542343,1.303949 0.967077,1.165661 0.171467,0.08433 1.324183,-1.080763 1.324183,-1.080763 0,0 -0.536721,1.703201 -0.247728,1.797126 0.08487,0.542544 1.605038,0.305835 1.605038,0.305835 l -1.409836,0.625756 z"
-         id="path2239"
-         sodipodi:nodetypes="cccccccc" />
       <rect
          style="display:inline;fill:#999999;stroke-width:0.0540981"
          id="rect2245"

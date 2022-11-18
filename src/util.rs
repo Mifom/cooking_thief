@@ -113,10 +113,10 @@ pub struct Reload(f32);
 pub struct Room(pub u8);
 
 #[derive(Component)]
-pub struct Player2;
+pub struct Player;
 
 #[derive(Bundle)]
-pub struct Body2 {
+pub struct Body {
     pub position: Position,
     pub form: Form,
     pub sight: Sight,
@@ -126,10 +126,11 @@ pub struct Body2 {
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
-    player: Player2,
-    body: Body2,
+    player: Player,
+    body: Body,
     reload: Reload,
     health: Health,
+    item: Item,
 }
 
 #[derive(Component, Default)]
@@ -143,12 +144,12 @@ pub enum EnemyState {
 pub struct Post(pub Vec2);
 
 #[derive(Component)]
-pub struct Enemy2;
+pub struct Enemy;
 
 #[derive(Bundle)]
 pub struct EnemyBundle {
-    pub enemy: Enemy2,
-    pub body: Body2,
+    pub enemy: Enemy,
+    pub body: Body,
     pub reload: Reload,
     // pub slash: i8,
     pub state: EnemyState,
@@ -165,6 +166,7 @@ pub struct BallBundle {
     position: Position,
     velocity: Velocity,
     room: Room,
+    item: Item,
 }
 
 #[derive(Component, Clone, Copy, Hash, PartialEq, Eq, Deserialize)]
@@ -243,16 +245,17 @@ pub fn player_action(
             Entity,
             &Position,
             Option<&Visible>,
+            &Item,
             &mut Form,
             &mut Reload,
             &Room,
             &Health,
         ),
-        With<Player2>,
+        With<Player>,
     >,
     mut moves: EventWriter<(Entity, MoveAction)>,
 ) {
-    let Ok((player_id, position, visible, mut form, mut reload, room, health)) =
+    let Ok((player_id, position, visible, item, mut form, mut reload, room, health)) =
         player.get_single_mut() else {
         return;
     };
@@ -279,11 +282,9 @@ pub fn player_action(
             clamp((y_m - screen.y) / screen.height, 0., 1.),
         )
     };
-    let x_direction = x_mouse - position.0.x;
-    let y_direction = y_mouse - position.0.y;
     let sight = Vec2 {
-        x: x_direction,
-        y: y_direction,
+        x: x_mouse - position.0.x,
+        y: y_mouse - position.0.y,
     }
     .normalize_or_zero();
     let move_action = MoveAction {
@@ -309,14 +310,25 @@ pub fn player_action(
         };
     }
     if is_mouse_button_down(MouseButton::Left) && visible.is_some() && reload.0 == 0. {
-        reload.0 = PLAYER_RELOAD;
-        let position = position.0 + (move_action.sight * PLAYER_RADIUS);
-        commands.spawn(BallBundle {
-            position: Position(position),
-            ball: Ball2,
-            velocity: Velocity(move_action.sight * BALL_SPEED),
-            room: *room,
-        });
+        match item {
+            Item::Vegetable { .. } => {
+                reload.0 = PLAYER_RELOAD;
+                let position = position.0 + (move_action.sight * PLAYER_RADIUS);
+                commands.spawn(BallBundle {
+                    position: Position(position),
+                    ball: Ball2,
+                    velocity: Velocity(move_action.sight * BALL_SPEED),
+                    room: *room,
+                    item: item.clone(),
+                });
+            }
+            _ => {
+                commands.entity(player_id).insert(Phrase {
+                    text: format!("I can't attack with {}", item.name()),
+                    time: 3.,
+                });
+            }
+        }
     }
 }
 
@@ -335,11 +347,11 @@ pub fn enemies_actions(
             &Health,
             &Room,
         ),
-        (With<Enemy2>, Without<Player2>),
+        (With<Enemy>, Without<Player>),
     >,
     mut player: Query<
         (&Position, &Form, &mut Health, Option<&Visible>, &Room),
-        (With<Player2>, Without<Enemy2>),
+        (With<Player>, Without<Enemy>),
     >,
 ) {
     let Ok((player_position, player_form, mut player_health, player_visible, player_room) )=
@@ -413,7 +425,7 @@ pub fn enemies_actions(
             EnemyState::LastSeen(last_position, _) => (
                 MoveAction {
                     move_direction: position.move_to(last_position),
-                    sight: Vec2 { x: 1., y: 0. },
+                    sight: last_position - position.0,
                 },
                 false,
             ),
@@ -421,16 +433,11 @@ pub fn enemies_actions(
         moves.send((enemy_id, move_action));
         if slash && reload.0 == 0. {
             reload.0 = PLAYER_RELOAD;
-            if player_visible {
-                player_health.decrease();
-            }
+            player_health.decrease();
         }
     }
 }
-pub fn use_doors(
-    doors: Query<&Door>,
-    mut player: Query<(&mut Position, &mut Room), With<Player2>>,
-) {
+pub fn use_doors(doors: Query<&Door>, mut player: Query<(&mut Position, &mut Room), With<Player>>) {
     let Ok((mut position, mut room)) = player.get_single_mut() else {
         return;
     };
@@ -470,8 +477,8 @@ pub fn move_body(
 ) {
     for (action_entity, move_action) in actions.iter() {
         for (entity, mut sight, mut position, mut speed) in &mut bodies {
-            sight.0 = move_action.sight;
             if *action_entity == entity {
+                sight.0 = move_action.sight;
                 speed.x += 2 * move_action.move_direction.0;
                 speed.y += 2 * move_action.move_direction.1;
 
@@ -496,6 +503,7 @@ pub fn move_body(
             }
         }
     }
+    actions.clear();
 }
 
 pub fn collide(mut bodies: Query<(Entity, &mut Position, &Form, &Room)>) {
@@ -566,7 +574,7 @@ pub fn update_balls(time: Res<Time>, mut balls: Query<(&mut Position, &Velocity)
 pub fn collide_balls(
     mut commands: Commands,
     balls: Query<(Entity, &Position, &Room), With<Ball2>>,
-    mut enemies: Query<(&Position, &Form, &mut Health, &Room), With<Enemy2>>,
+    mut enemies: Query<(&Position, &Form, &mut Health, &Room), With<Enemy>>,
 ) {
     'outer: for (ball_id, Position(ball_position), Room(ball_room)) in balls.into_iter() {
         for (Position(enemy_position), enemy_form, mut enemy_health, Room(enemy_room)) in
@@ -596,7 +604,16 @@ pub fn change_state(
     mut state: ResMut<crate::State>,
     state_change: Option<Res<StateChange>>,
     mut commands: Commands,
-    entities: Query<Entity, Or<(With<Enemy2>, With<Player2>, With<Ball2>, With<Door>)>>,
+    entities: Query<
+        Entity,
+        Or<(
+            With<Enemy>,
+            With<Player>,
+            With<Ball2>,
+            With<Door>,
+            With<Crate>,
+        )>,
+    >,
 ) {
     if let Some(state_change) = state_change {
         commands.remove_resource::<StateChange>();
@@ -696,8 +713,8 @@ pub fn load_new_state(
                 let current_room =
                     push_room(&mut result_rooms, entry_room, &room_map).unwrap() as u8;
                 let player = PlayerBundle {
-                    player: Player2,
-                    body: Body2 {
+                    player: Player,
+                    body: Body {
                         position: Position(position),
                         form: Form::Rect {
                             width: 1.5 * PLAYER_RADIUS,
@@ -709,6 +726,7 @@ pub fn load_new_state(
                     },
                     reload: Reload::default(),
                     health: Health::Full,
+                    item: Item::Sword,
                 };
                 commands.spawn(player);
                 for room in result_rooms {
@@ -718,13 +736,16 @@ pub fn load_new_state(
                     for door in room.2.into_iter() {
                         commands.spawn(door);
                     }
+                    for item_crate in room.3.into_iter() {
+                        commands.spawn(item_crate);
+                    }
                 }
             }
         }
     }
 }
 
-pub fn respawn_on_death(player: Query<&Health, With<Player2>>, mut commands: Commands) {
+pub fn respawn_on_death(player: Query<&Health, With<Player>>, mut commands: Commands) {
     if player
         .get_single()
         .map(|health| health != &Health::Dead)
@@ -737,7 +758,7 @@ pub fn respawn_on_death(player: Query<&Health, With<Player2>>, mut commands: Com
     }
 }
 
-pub fn death_screen(player: Query<&Health, With<Player2>>, screen: Res<Screen>) {
+pub fn death_screen(player: Query<&Health, With<Player>>, screen: Res<Screen>) {
     if player
         .get_single()
         .map(|health| health != &Health::Dead)
@@ -756,34 +777,74 @@ pub fn death_screen(player: Query<&Health, With<Player2>>, screen: Res<Screen>) 
     draw_centered_txt(&screen, "You're dead. Press R to continue", 0.5, 0.1, WHITE);
 }
 
-// #[derive(Clone, serde::Deserialize)]
-// pub enum ItemKind {
-//     Tomato,
-//     Sword,
-//     Key,
-//     Vegetable { name: String, idx: usize },
-// }
+#[derive(Clone, serde::Deserialize, Component)]
+pub enum Item {
+    Sword,
+    Key,
+    Vegetable { name: String, idx: usize },
+}
 
-// pub struct Item {
-//     pub position: Vec2,
-//     pub kind: ItemKind,
-//     pub image: Texture2D,
-//     pub rect: Rect,
-// }
+#[derive(Component)]
+pub struct Crate;
 
-// impl Item {
-//     pub async fn new(position: Vec2, kind: ItemKind) -> Self {
-//         let rect = match kind {
-//             ItemKind::Tomato => Rect::new(20., 20., 50., 50.),
-//             ItemKind::Sword => Rect::new(80., 20., 100., 120.),
-//             ItemKind::Key => Rect::new(200., 20., 60., 60.),
-//             ItemKind::Vegetable { idx, .. } => Rect::new(20. + (idx as f32 * 60.), 150., 50., 50.),
-//         };
-//         Self {
-//             position,
-//             kind,
-//             rect,
-//             image: load_texture("assets/items.png").await.unwrap(),
-//         }
-//     }
-// }
+#[derive(Bundle)]
+pub struct ItemCrate {
+    item_crate: Crate,
+    item: Item,
+    position: Position,
+    form: Form,
+    room: Room,
+}
+
+impl ItemCrate {
+    pub fn new(item: Item, position: Position, room: Room) -> Self {
+        Self {
+            item_crate: Crate,
+            item,
+            position,
+            room,
+            form: Form::Rect {
+                width: 1.5 * PLAYER_RADIUS,
+                height: 1.5 * PLAYER_RADIUS,
+            },
+        }
+    }
+}
+
+impl Item {
+    pub fn rect(&self) -> Rect {
+        match self {
+            Self::Sword => Rect::new(80., 20., 100., 120.),
+            Self::Key => Rect::new(200., 20., 60., 60.),
+            Self::Vegetable { idx, .. } => Rect::new(20. + (*idx as f32 * 60.), 150., 50., 50.),
+        }
+    }
+    pub fn name(&self) -> String {
+        match self {
+            Self::Sword => "sword",
+            Self::Key => "key",
+            Self::Vegetable { name, .. } => name,
+        }
+        .to_owned()
+    }
+}
+
+pub fn swap_items(
+    mut player: Query<(&Position, &Form, &Room, &mut Item), (With<Player>, Without<Crate>)>,
+    mut crates: Query<(&Position, &Form, &Room, &mut Item), (With<Crate>, Without<Player>)>,
+) {
+    let Ok((player_position, player_form, player_room, mut player_item)) = player.get_single_mut() else {
+        return;
+    };
+    for (position, form, room, mut item) in crates.iter_mut() {
+        if room.0 != player_room.0 {
+            continue;
+        }
+        let diff = position.0 - player_position.0;
+        if is_key_pressed(KeyCode::E)
+            && diff.length() <= player_form.direction_len(diff) + form.direction_len(diff) + 0.02
+        {
+            (*player_item, *item) = (item.clone(), player_item.clone());
+        }
+    }
+}

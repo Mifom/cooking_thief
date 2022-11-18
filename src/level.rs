@@ -11,9 +11,9 @@ use crate::{
     assets::Assets,
     graphics::{draw_circ, draw_rect, draw_txt, get_lines, Screen},
     util::{
-        Ball2, Body2, Direction, Door, Enemy2, EnemyBundle, EnemyState, Form, Health, Phrase,
-        Player2, Position, Post, Reload, Room, Sight, Speed, Visible, BALL_RADIUS, PLAYER_RADIUS,
-        RATIO_W_H, WALL_SIZE,
+        Ball2, Body, Crate, Direction, Door, Enemy, EnemyBundle, EnemyState, Form, Health, Item,
+        ItemCrate, Phrase, Player, Position, Post, Reload, Room, Sight, Speed, Visible,
+        BALL_RADIUS, PLAYER_RADIUS, RATIO_W_H, WALL_SIZE,
     },
 };
 
@@ -27,6 +27,7 @@ pub struct RoomConfig {
     pub id: u8,
     pub enter: Option<Direction>,
     pub doors: Vec<DoorConfig>,
+    pub items: Option<Vec<Item>>,
     pub enemies: u8,
 }
 
@@ -50,11 +51,11 @@ pub struct DoorConfig {
 }
 
 pub fn draw_player(
-    player: Query<(&Position, &Form, &Sight, Option<&Visible>), With<Player2>>,
+    player: Query<(&Position, &Form, &Sight, Option<&Visible>, &Item), With<Player>>,
     screen: Res<Screen>,
     assets: Res<Assets>,
 ) {
-    let Ok((position, form, sight, visible )) =
+    let Ok((position, form, sight, visible, item)) =
         player.get_single() else {
         return;
     };
@@ -88,45 +89,57 @@ pub fn draw_player(
             ..Default::default()
         },
     );
+    // Item
+    let rect = item.rect();
+    draw_texture_ex(
+        assets.images["items"],
+        (position.0.x - PLAYER_RADIUS) * screen.height + screen.x,
+        (position.0.y + PLAYER_RADIUS) * screen.height + screen.y,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(Vec2 {
+                x: 2. * BALL_RADIUS * screen.height,
+                y: 2. * BALL_RADIUS * screen.height,
+            }),
+            source: Some(rect),
+            ..Default::default()
+        },
+    );
 }
 pub fn draw_balls(
-    room: Query<&crate::util::Room, With<Player2>>,
-    balls: Query<(&Position, &crate::util::Room), With<Ball2>>,
+    room: Query<&crate::util::Room, With<Player>>,
+    balls: Query<(&Position, &crate::util::Room, &Item), With<Ball2>>,
     screen: Res<Screen>,
+    assets: Res<Assets>,
 ) {
-    // INFO: uncomment if want to see sight trace
-    //
-    // let (x_mouse, y_mouse) = {
-    //     let (x_m, y_m) = mouse_position();
-    //     (
-    //         clamp((x_m - screen.x) / screen.height, 0., RATIO_W_H),
-    //         clamp((y_m - screen.y) / screen.height, 0., 1.),
-    //     )
-    // };
-    // draw_lin(
-    //     screen,
-    //     state.player.position.x,
-    //     state.player.position.y,
-    //     x_mouse,
-    //     y_mouse,
-    //     BALL_RADIUS,
-    //     GRAY,
-    // );
     let Ok(room) = room.get_single() else {
         return
     };
-    for (position, ball_room) in &balls {
+    for (position, ball_room, item) in &balls {
         if ball_room.0 != room.0 {
             continue;
         }
-        draw_circ(&screen, position.0.x, position.0.y, BALL_RADIUS, RED);
+        draw_texture_ex(
+            assets.images["items"],
+            (position.0.x - BALL_RADIUS) * screen.height + screen.x,
+            (position.0.y - BALL_RADIUS) * screen.height + screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2 {
+                    x: 2. * BALL_RADIUS * screen.height,
+                    y: 2. * BALL_RADIUS * screen.height,
+                }),
+                source: Some(item.rect()),
+                ..Default::default()
+            },
+        );
     }
 }
 
 pub fn draw_enemies(
     screen: Res<Screen>,
-    enemies: Query<(&Position, &Health, &crate::util::Room), With<Enemy2>>,
-    room: Query<&crate::util::Room, With<Player2>>,
+    enemies: Query<(&Position, &Health, &crate::util::Room), With<Enemy>>,
+    room: Query<&crate::util::Room, With<Player>>,
 ) {
     let Ok(drawing_room) = room.get_single() else {
         return
@@ -161,7 +174,7 @@ pub fn draw_enemies(
 pub fn draw_doors(
     screen: Res<Screen>,
     doors: Query<&Door>,
-    player: Query<(&crate::util::Room, &Health), With<Player2>>,
+    player: Query<(&crate::util::Room, &Health), With<Player>>,
 ) {
     let Ok((drawing_room, health)) = player.get_single() else {
         return
@@ -202,10 +215,10 @@ pub fn draw_doors(
 pub fn draw_phrase(
     phrases: Query<(&Phrase, &crate::util::Room, &Position, &Form)>,
     screen: Res<Screen>,
-    room: Query<&crate::util::Room, With<Player2>>,
+    room: Query<&crate::util::Room, With<Player>>,
 ) {
     let Ok(drawing_room) = room.get_single() else {
-        return
+        return;
     };
     for (phrase, room, position, form) in &phrases {
         if room.0 != drawing_room.0 {
@@ -235,8 +248,57 @@ pub fn draw_phrase(
     }
 }
 
+pub fn draw_crates(
+    crates: Query<(&Room, &Position, &Form, &Item), With<Crate>>,
+    screen: Res<Screen>,
+    player: Query<(&Position, &Form, &crate::util::Room), With<Player>>,
+    assets: Res<Assets>,
+) {
+    let Ok((player_position, player_form, drawing_room)) = player.get_single() else {
+        return;
+    };
+    for (room, position, form, item) in crates.iter() {
+        if room.0 != drawing_room.0 {
+            continue;
+        }
+        draw_rect(
+            &screen,
+            position.0.x - form.x_r(),
+            position.0.y - form.y_r(),
+            2. * form.x_r(),
+            2. * form.y_r(),
+            GREEN,
+        );
+        draw_texture_ex(
+            assets.images["items"],
+            (position.0.x - BALL_RADIUS) * screen.height + screen.x,
+            (position.0.y - BALL_RADIUS) * screen.height + screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2 {
+                    x: 2. * BALL_RADIUS * screen.height,
+                    y: 2. * BALL_RADIUS * screen.height,
+                }),
+                source: Some(item.rect()),
+                ..Default::default()
+            },
+        );
+        let diff = position.0 - player_position.0;
+        if diff.length() <= player_form.direction_len(diff) + form.direction_len(diff) + 0.02 {
+            draw_txt(
+                &screen,
+                "E to use",
+                position.0.x,
+                position.0.y - form.y_r() - 0.02,
+                0.08,
+                GREEN,
+            );
+        }
+    }
+}
+
 pub fn push_room(
-    rooms: &mut Vec<(u8, Vec<EnemyBundle>, Vec<Door>)>,
+    rooms: &mut Vec<(u8, Vec<EnemyBundle>, Vec<Door>, Vec<ItemCrate>)>,
     room: &RoomConfig,
     room_map: &HashMap<&RoomConfig, Vec<(Direction, &RoomConfig)>>,
 ) -> Option<usize> {
@@ -255,8 +317,8 @@ pub fn push_room(
                     y: gen_range(0.25, 0.75),
                 };
                 EnemyBundle {
-                    enemy: Enemy2,
-                    body: Body2 {
+                    enemy: Enemy,
+                    body: Body {
                         position: Position(position),
                         form: Form::Circle {
                             radius: PLAYER_RADIUS,
@@ -273,6 +335,22 @@ pub fn push_room(
             })
             .collect(),
         Vec::new(),
+        room.items
+            .as_ref()
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|item| {
+                ItemCrate::new(
+                    item,
+                    Position(Vec2 {
+                        x: gen_range(RATIO_W_H / 3.0, 2. * RATIO_W_H / 3.),
+                        y: gen_range(0.25, 0.75),
+                    }),
+                    Room(room.id),
+                )
+            })
+            .collect(),
     ));
     let room_pos = rooms.len() - 1;
     rooms[room_pos].2 = connected_rooms

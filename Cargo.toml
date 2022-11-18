@@ -1,5 +1,5 @@
 [package]
-name = "the_truthy_scroll"
+name = "super_cooking_simulator"
 version = "0.1.0"
 edition = "2021"
 authors = ["Mifom <requestdg@gmail.com>"]
