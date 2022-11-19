@@ -48,6 +48,8 @@ impl Hash for RoomConfig {
 pub struct DoorConfig {
     pub direction: Direction,
     pub to: u8,
+    #[serde(default)]
+    pub closed: bool,
 }
 
 pub fn draw_player(
@@ -196,19 +198,19 @@ pub fn draw_doors(
         WHITE,
     );
     for door in &doors {
-        if door.from.0 != drawing_room.0 {
-            continue;
-        }
+        if let Some((direction, _)) = door.door_from(drawing_room) {
+            let color = if door.closed { BROWN } else { WHITE };
 
-        let (x, y, w, h) = match door.direction {
-            crate::util::Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE),
-            crate::util::Direction::South => {
-                (RATIO_W_H / 2. - 0.15, 1.0 - WALL_SIZE, 0.3, WALL_SIZE)
-            }
-            crate::util::Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, WALL_SIZE, 0.3),
-            crate::util::Direction::West => (0.0, 0.5 - 0.15, WALL_SIZE, 0.3),
-        };
-        draw_rect(&screen, x, y, w, h, BROWN);
+            let (x, y, w, h) = match direction {
+                crate::util::Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE),
+                crate::util::Direction::South => {
+                    (RATIO_W_H / 2. - 0.15, 1.0 - WALL_SIZE, 0.3, WALL_SIZE)
+                }
+                crate::util::Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, WALL_SIZE, 0.3),
+                crate::util::Direction::West => (0.0, 0.5 - 0.15, WALL_SIZE, 0.3),
+            };
+            draw_rect(&screen, x, y, w, h, color);
+        }
     }
 }
 
@@ -298,12 +300,12 @@ pub fn draw_crates(
 }
 
 pub fn push_room(
-    rooms: &mut Vec<(u8, Vec<EnemyBundle>, Vec<Door>, Vec<ItemCrate>)>,
+    rooms: &mut Vec<(u8, Vec<EnemyBundle>, Vec<ItemCrate>)>,
     room: &RoomConfig,
-    room_map: &HashMap<&RoomConfig, Vec<(Direction, &RoomConfig)>>,
+    room_map: &HashMap<&RoomConfig, Vec<(Direction, &RoomConfig, bool)>>,
 ) -> Option<usize> {
     let mut connected_rooms = HashMap::new();
-    for (direction, room) in room_map.get(room).unwrap().iter().copied() {
+    for (direction, room, _) in room_map.get(room).unwrap().iter().copied() {
         if connected_rooms.insert(direction, room).is_some() {
             return None;
         }
@@ -334,7 +336,6 @@ pub fn push_room(
                 }
             })
             .collect(),
-        Vec::new(),
         room.items
             .as_ref()
             .cloned()
@@ -353,20 +354,12 @@ pub fn push_room(
             .collect(),
     ));
     let room_pos = rooms.len() - 1;
-    rooms[room_pos].2 = connected_rooms
-        .into_iter()
-        .map(|(direction, room)| {
-            let to = rooms
-                .iter()
-                .position(|r| r.0 == room.id)
-                .or_else(|| push_room(rooms, room, room_map))
-                .map(|room| Room(room as u8))?;
-            Some(Door {
-                direction,
-                from: Room(room_pos as u8),
-                to,
-            })
-        })
-        .collect::<Option<_>>()?;
+    connected_rooms.into_values().try_for_each(|room| {
+        rooms
+            .iter()
+            .position(|r| r.0 == room.id)
+            .or_else(|| push_room(rooms, room, room_map))
+            .map(|_| ())
+    })?;
     Some(room_pos)
 }

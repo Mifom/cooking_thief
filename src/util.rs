@@ -190,9 +190,36 @@ impl Direction {
 
 #[derive(Component)]
 pub struct Door {
-    pub direction: Direction,
-    pub from: Room,
-    pub to: Room,
+    direction: Direction,
+    from: Room,
+    to: Room,
+    pub closed: bool,
+}
+impl Door {
+    pub fn new(from: Room, to: Room, direction: Direction, closed: bool) -> Self {
+        Self {
+            direction,
+            from,
+            to,
+            closed,
+        }
+    }
+    pub fn door_from(&self, from: &Room) -> Option<(Direction, Room)> {
+        if from == &self.from {
+            Some((self.direction, self.to))
+        } else if from == &self.to {
+            Some((self.direction.inverse(), self.from))
+        } else {
+            None
+        }
+    }
+}
+
+impl PartialEq for Door {
+    fn eq(&self, other: &Self) -> bool {
+        (self.from == other.from && self.to == other.to)
+            || (self.from == other.to && self.to == other.from)
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -437,13 +464,17 @@ pub fn enemies_actions(
         }
     }
 }
-pub fn use_doors(doors: Query<&Door>, mut player: Query<(&mut Position, &mut Room), With<Player>>) {
-    let Ok((mut position, mut room)) = player.get_single_mut() else {
+pub fn use_doors(
+    mut doors: Query<&mut Door>,
+    mut player: Query<(Entity, &mut Position, &mut Room, &Item), With<Player>>,
+    mut commands: Commands,
+) {
+    let Ok((player_id, mut position, mut room, item)) = player.get_single_mut() else {
         return;
     };
-    for door in doors.iter() {
-        if door.from == *room {
-            let (x_range, y_range) = match door.direction {
+    for mut door in doors.iter_mut() {
+        if let Some((direction, to)) = door.door_from(&room) {
+            let (x_range, y_range) = match direction {
                 Direction::North => (
                     (RATIO_W_H / 2. - 0.15..=RATIO_W_H / 2. + 0.15),
                     (0.0..=WALL_SIZE + 0.05),
@@ -456,15 +487,23 @@ pub fn use_doors(doors: Query<&Door>, mut player: Query<(&mut Position, &mut Roo
                 Direction::West => ((0.0..=(WALL_SIZE + 0.05)), (0.35..=0.65)),
             };
             if x_range.contains(&position.0.x) && y_range.contains(&position.0.y) {
-                match door.direction {
-                    Direction::North | Direction::South => {
-                        position.0.y = clamp(1. - position.0.y, 0.1, 0.9);
+                if door.closed && item != &Item::Key {
+                    commands.entity(player_id).insert(Phrase {
+                        text: "It's locked".to_owned(),
+                        time: 1.,
+                    });
+                } else {
+                    door.closed = false;
+                    match direction {
+                        Direction::North | Direction::South => {
+                            position.0.y = clamp(1. - position.0.y, 0.1, 0.9);
+                        }
+                        Direction::East | Direction::West => {
+                            position.0.x = clamp(RATIO_W_H - position.0.x, 0.1, RATIO_W_H - 0.1);
+                        }
                     }
-                    Direction::East | Direction::West => {
-                        position.0.x = clamp(RATIO_W_H - position.0.x, 0.1, RATIO_W_H - 0.1);
-                    }
+                    *room = to;
                 }
-                *room = door.to;
             }
         }
     }
@@ -651,6 +690,17 @@ pub fn load_new_state(
                 let config = assets.levels.get(name).unwrap();
 
                 let rooms = &config.rooms;
+                rooms
+                    .iter()
+                    .flat_map(|room| room.doors.iter().map(|door| (room.id, door)))
+                    .for_each(|(from, door)| {
+                        commands.spawn(Door::new(
+                            Room(from),
+                            Room(door.to),
+                            door.direction,
+                            door.closed,
+                        ));
+                    });
                 let room_map = rooms
                     .iter()
                     .map(|room| {
@@ -662,13 +712,19 @@ pub fn load_new_state(
                                     room.doors
                                         .iter()
                                         .find(|door| door.to == connected.id)
-                                        .map(|door| (door.direction, connected))
+                                        .map(|door| (door.direction, connected, door.closed))
                                         .or_else(|| {
                                             connected
                                                 .doors
                                                 .iter()
                                                 .find(|door| door.to == room.id)
-                                                .map(|door| (door.direction.inverse(), connected))
+                                                .map(|door| {
+                                                    (
+                                                        door.direction.inverse(),
+                                                        connected,
+                                                        door.closed,
+                                                    )
+                                                })
                                         })
                                 })
                                 .collect::<Vec<_>>(),
@@ -733,10 +789,7 @@ pub fn load_new_state(
                     for enemy in room.1.into_iter() {
                         commands.spawn(enemy);
                     }
-                    for door in room.2.into_iter() {
-                        commands.spawn(door);
-                    }
-                    for item_crate in room.3.into_iter() {
+                    for item_crate in room.2.into_iter() {
                         commands.spawn(item_crate);
                     }
                 }
@@ -777,7 +830,7 @@ pub fn death_screen(player: Query<&Health, With<Player>>, screen: Res<Screen>) {
     draw_centered_txt(&screen, "You're dead. Press R to continue", 0.5, 0.1, WHITE);
 }
 
-#[derive(Clone, serde::Deserialize, Component)]
+#[derive(Clone, serde::Deserialize, Component, PartialEq, Eq)]
 pub enum Item {
     Sword,
     Key,

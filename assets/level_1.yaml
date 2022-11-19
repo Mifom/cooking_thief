@@ -10,10 +10,13 @@ rooms:
     doors:
     - direction: East
       to: 2
+    items:
+    - !Key
   - id: 2
     enemies: 2
     doors:
     - direction: South
+      closed: true
       to: 3
   - id: 3
     enemies: 1
