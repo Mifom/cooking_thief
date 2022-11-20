@@ -53,11 +53,11 @@ pub struct DoorConfig {
 }
 
 pub fn draw_player(
-    player: Query<(&Position, &Form, &Sight, Option<&Visible>, &Item), With<Player>>,
+    player: Query<(&Position, &Form, &Sight, Option<&Visible>), With<Player>>,
     screen: Res<Screen>,
     assets: Res<Assets>,
 ) {
-    let Ok((position, form, sight, visible, item)) =
+    let Ok((position, form, sight, visible)) =
         player.get_single() else {
         return;
     };
@@ -88,22 +88,6 @@ pub fn draw_player(
                 })
             },
             flip_x: sight.0.x < 0.,
-            ..Default::default()
-        },
-    );
-    // Item
-    let rect = item.rect();
-    draw_texture_ex(
-        assets.images["items"],
-        (position.0.x - PLAYER_RADIUS) * screen.height + screen.x,
-        (position.0.y + PLAYER_RADIUS) * screen.height + screen.y,
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some(Vec2 {
-                x: 2. * BALL_RADIUS * screen.height,
-                y: 2. * BALL_RADIUS * screen.height,
-            }),
-            source: Some(rect),
             ..Default::default()
         },
     );

@@ -1,13 +1,20 @@
 #![allow(unused)]
-use bevy_ecs::system::{Res, Resource};
+use bevy_ecs::{
+    query::With,
+    system::{Query, Res, Resource},
+};
 use macroquad::{
-    prelude::{Color, BLACK, WHITE},
+    prelude::{mouse_position, Color, Vec2, BLACK, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
     text::{draw_text, measure_text},
+    texture::{draw_texture_ex, DrawTextureParams},
     window::clear_background,
 };
 
-use crate::util::RATIO_W_H;
+use crate::{
+    assets::Assets,
+    util::{Item, Player, BALL_RADIUS, RATIO_W_H},
+};
 
 #[derive(Resource)]
 pub struct Screen {
@@ -147,5 +154,25 @@ pub fn draw_centered_txt(screen: &Screen, text: &str, y: f32, font: f32, color: 
         screen.height * y + screen.y,
         screen.height * font,
         color,
+    );
+}
+
+pub fn draw_cursor(screen: Res<Screen>, assets: Res<Assets>, player: Query<&Item, With<Player>>) {
+    let item = player.get_single().unwrap_or(&Item::Sword);
+    let (x_m, y_m) = mouse_position();
+    let rect = item.rect();
+    draw_texture_ex(
+        assets.images["items"],
+        x_m,
+        y_m,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(Vec2 {
+                x: 3. * BALL_RADIUS * screen.height,
+                y: 3. * BALL_RADIUS * screen.height,
+            }),
+            source: Some(rect),
+            ..Default::default()
+        },
     );
 }

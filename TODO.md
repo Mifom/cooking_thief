@@ -12,21 +12,23 @@ TODOs for this project:
 - [ ] AI
   - [X] Basic movement
   - [X] State machine to find hidden player
-  - [ ] Search in open door(?)
+  - [ ] Search in open door with key(?)
 - [ ] Story
   - [X] Main plot
-  - [ ] Receipt holder
+  - [X] Receipt holder
   - [ ] NPC(?)
   - [ ] Text
 - [ ] Graphics
   - [ ] Environment graphics
   - [ ] Player/enemies graphics
   - [ ] Story pages
+  - [ ] Receipt holder
+  - [ ] Animations
 - [ ] Audio
   - [ ] Themes
   - [ ] Sound effects for actions
 - [ ] HUD
   - [ ] Menu
-  - [ ] Cursor
+  - [X] Cursor
 - [ ] Bugs
   - [ ] little render glitch on top of the level

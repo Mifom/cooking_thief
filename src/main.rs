@@ -1,5 +1,5 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use graphics::get_screen_size;
+use graphics::{draw_cursor, get_screen_size};
 use level::{draw_crates, draw_phrase, draw_player};
 use util::*;
 
@@ -34,6 +34,8 @@ pub enum Label {
 
 #[macroquad::main("Super cooking simulator")]
 async fn main() {
+    show_mouse(false);
+
     let mut world = World::new();
 
     world.insert_resource(Assets::load().await.unwrap());
@@ -78,7 +80,8 @@ async fn main() {
             .with_system(draw_enemies.after(draw_doors).before(draw_phrase))
             .with_system(draw_crates.after(draw_doors).before(draw_phrase))
             .with_system(draw_phrase.after(draw_doors))
-            .with_system(death_screen.at_end()),
+            .with_system(death_screen.after(draw_phrase).after(draw_scene))
+            .with_system(draw_cursor.at_end()),
     );
 
     loop {
