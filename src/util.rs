@@ -84,7 +84,7 @@ pub struct Sight(pub Vec2);
 #[derive(Component)]
 pub struct Visible;
 
-#[derive(Component, PartialEq, Eq)]
+#[derive(Component, PartialEq, Eq, Debug)]
 pub enum Health {
     Full,
     Low,
@@ -195,6 +195,7 @@ pub struct Door {
     to: Room,
     pub closed: bool,
 }
+
 impl Door {
     pub fn new(from: Room, to: Room, direction: Direction, closed: bool) -> Self {
         Self {
@@ -221,6 +222,9 @@ impl PartialEq for Door {
             || (self.from == other.to && self.to == other.from)
     }
 }
+
+#[derive(Component)]
+pub struct Entrance;
 
 #[derive(Clone, Copy)]
 pub struct MoveAction {
@@ -465,14 +469,15 @@ pub fn enemies_actions(
     }
 }
 pub fn use_doors(
-    mut doors: Query<&mut Door>,
+    mut doors: Query<(&mut Door, Option<&Entrance>)>,
     mut player: Query<(Entity, &mut Position, &mut Room, &Item), With<Player>>,
+    enemies: Query<&Health, With<Enemy>>,
     mut commands: Commands,
 ) {
-    let Ok((player_id, mut position, mut room, item)) = player.get_single_mut() else {
+    let Ok((player_id, mut position, mut room, item )) = player.get_single_mut() else {
         return;
     };
-    for mut door in doors.iter_mut() {
+    for (mut door, entrance) in doors.iter_mut() {
         if let Some((direction, to)) = door.door_from(&room) {
             let (x_range, y_range) = match direction {
                 Direction::North => (
@@ -487,6 +492,22 @@ pub fn use_doors(
                 Direction::West => ((0.0..=(WALL_SIZE + 0.05)), (0.35..=0.65)),
             };
             if x_range.contains(&position.0.x) && y_range.contains(&position.0.y) {
+                if entrance.is_some() {
+                    if enemies.iter().any(|health| health != &Health::Dead) {
+                        commands.entity(player_id).insert(Phrase {
+                            text: "The guards are still on guard".to_owned(),
+                            time: 2.,
+                        });
+                    } else if item != &Item::Sword {
+                        commands.entity(player_id).insert(Phrase {
+                            text: "I can't leave sword here".to_owned(),
+                            time: 2.,
+                        });
+                    } else {
+                        commands.insert_resource(StateChange::Next);
+                    }
+                    return;
+                }
                 if door.closed && item != &Item::Key {
                     commands.entity(player_id).insert(Phrase {
                         text: "It's locked".to_owned(),
@@ -664,12 +685,12 @@ pub fn change_state(
 
         match *state_change {
             StateChange::Next => match state.as_ref() {
-                crate::State::Scene(_) => *state = crate::State::Battle("level_1".to_string()),
-                crate::State::Battle(_) => *state = crate::State::Scene("scene_1".to_string()),
+                crate::State::Scene(num) => *state = crate::State::Battle(*num),
+                crate::State::Battle(num) => *state = crate::State::Scene(*num + 1),
             },
             StateChange::Restart => match state.as_ref() {
-                crate::State::Scene(_) => *state = crate::State::Scene("scene_1".to_string()),
-                crate::State::Battle(_) => *state = crate::State::Battle("level_1".to_string()),
+                crate::State::Scene(num) => *state = crate::State::Scene(*num),
+                crate::State::Battle(num) => *state = crate::State::Battle(*num),
             },
         }
     }
@@ -682,25 +703,14 @@ pub fn load_new_state(
 ) {
     if state.is_changed() {
         match state.as_ref() {
-            crate::State::Scene(name) => {
-                let scene = assets.scenes.get(name).unwrap();
+            crate::State::Scene(num) => {
+                let scene = assets.scenes.get(num).unwrap_or_else(|| panic!("{num}"));
                 commands.insert_resource(scene.clone());
             }
-            crate::State::Battle(name) => {
-                let config = assets.levels.get(name).unwrap();
+            crate::State::Battle(num) => {
+                let config = assets.levels.get(num).unwrap();
 
                 let rooms = &config.rooms;
-                rooms
-                    .iter()
-                    .flat_map(|room| room.doors.iter().map(|door| (room.id, door)))
-                    .for_each(|(from, door)| {
-                        commands.spawn(Door::new(
-                            Room(from),
-                            Room(door.to),
-                            door.direction,
-                            door.closed,
-                        ));
-                    });
                 let room_map = rooms
                     .iter()
                     .map(|room| {
@@ -786,23 +796,34 @@ pub fn load_new_state(
                 };
                 commands.spawn(player);
                 for room in result_rooms {
-                    for enemy in room.1.into_iter() {
-                        commands.spawn(enemy);
-                    }
-                    for item_crate in room.2.into_iter() {
-                        commands.spawn(item_crate);
-                    }
+                    commands.spawn_batch(room.1);
+                    commands.spawn_batch(room.2);
                 }
+                rooms
+                    .iter()
+                    .flat_map(|room| room.doors.iter().map(|door| (room.id, door)))
+                    .for_each(|(from, door)| {
+                        commands.spawn(Door::new(
+                            Room(from),
+                            Room(door.to),
+                            door.direction,
+                            door.closed,
+                        ));
+                    });
+                commands.spawn((
+                    Door::new(Room(current_room), Room(u8::MAX), enter, false),
+                    Entrance,
+                ));
             }
         }
     }
 }
 
 pub fn respawn_on_death(player: Query<&Health, With<Player>>, mut commands: Commands) {
-    if player
+    if !(player
         .get_single()
-        .map(|health| health != &Health::Dead)
-        .unwrap_or_default()
+        .map(|health| health == &Health::Dead)
+        .unwrap_or_default())
     {
         return;
     };
@@ -812,10 +833,10 @@ pub fn respawn_on_death(player: Query<&Health, With<Player>>, mut commands: Comm
 }
 
 pub fn death_screen(player: Query<&Health, With<Player>>, screen: Res<Screen>) {
-    if player
+    if !(player
         .get_single()
-        .map(|health| health != &Health::Dead)
-        .unwrap_or_default()
+        .map(|health| health == &Health::Dead)
+        .unwrap_or_default())
     {
         return;
     };

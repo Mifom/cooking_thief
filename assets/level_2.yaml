@@ -3,7 +3,7 @@ rooms:
     enter: West
     enemies: 2
     doors:
-    - direction: East
+    - direction: South
       to: 1
   - id: 1
     enemies: 2
@@ -11,14 +11,23 @@ rooms:
     - direction: East
       to: 2
   - id: 2
-    enemies: 2
+    enemies: 3
     doors:
-    - direction: South
+    - direction: North
       to: 3
+    - direction: East
+      closed: true
+      to: 4
   - id: 3
     enemies: 1
     doors:
     items:
+    - !Key
+  - id: 4
+    enemies: 2
+    doors:
+    items:
     - !Vegetable
-      name: tomato
-      idx: 0
+      name: onion
+      idx: 1
+

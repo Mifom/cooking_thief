@@ -11,9 +11,9 @@ use crate::{
     assets::Assets,
     graphics::{draw_circ, draw_rect, draw_txt, get_lines, Screen},
     util::{
-        Ball2, Body, Crate, Direction, Door, Enemy, EnemyBundle, EnemyState, Form, Health, Item,
-        ItemCrate, Phrase, Player, Position, Post, Reload, Room, Sight, Speed, Visible,
-        BALL_RADIUS, PLAYER_RADIUS, RATIO_W_H, WALL_SIZE,
+        Ball2, Body, Crate, Direction, Door, Enemy, EnemyBundle, EnemyState, Entrance, Form,
+        Health, Item, ItemCrate, Phrase, Player, Position, Post, Reload, Room, Sight, Speed,
+        Visible, BALL_RADIUS, PLAYER_RADIUS, RATIO_W_H, WALL_SIZE,
     },
 };
 
@@ -175,7 +175,7 @@ pub fn draw_enemies(
 
 pub fn draw_doors(
     screen: Res<Screen>,
-    doors: Query<&Door>,
+    doors: Query<(&Door, Option<&Entrance>)>,
     player: Query<(&crate::util::Room, &Health), With<Player>>,
 ) {
     let Ok((drawing_room, health)) = player.get_single() else {
@@ -197,9 +197,15 @@ pub fn draw_doors(
         1. - 2. * WALL_SIZE,
         WHITE,
     );
-    for door in &doors {
+    for (door, entrance) in &doors {
         if let Some((direction, _)) = door.door_from(drawing_room) {
-            let color = if door.closed { BROWN } else { WHITE };
+            let color = if entrance.is_some() {
+                GOLD
+            } else if door.closed {
+                BROWN
+            } else {
+                WHITE
+            };
 
             let (x, y, w, h) = match direction {
                 crate::util::Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE),

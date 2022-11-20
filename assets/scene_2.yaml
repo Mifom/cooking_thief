@@ -1,0 +1,24 @@
+background: back
+cards:
+- image: fore
+  text: Hello, you
+- image: fore
+  text: You've done a great job! We now have tomatoes
+- image: fore
+  text: But I was shocked when I came to this warehouse and saw walls covered in blood and corpses...
+- image: fore
+  text: Until I realize thats all tomatoes...
+- image: fore
+  text: Did you use Sword of Great Disaster?
+- image: fore
+  text: ...
+- image: fore
+  text: Well, use it next time, okay?
+- image: fore
+  text: I'm not sure that you will get many vegetables next time
+- image: fore
+  text: Anyway
+- image: fore
+  text: This is your next warehouse, task is the same, but it's onions now
+
+  

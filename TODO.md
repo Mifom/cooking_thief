@@ -4,6 +4,7 @@ TODOs for this project:
   - [X] Doors
   - [X] Level definition from .yaml
   - [X] Items
+  - [X] Entrance/Exit
   - [ ] NPC(?)
 - [X] Story mode
   - [X] Basic view of story(LN style)

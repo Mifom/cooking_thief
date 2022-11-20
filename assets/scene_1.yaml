@@ -3,26 +3,29 @@ cards:
 - image: fore
   text: Hey you!
 - image: fore
-  text: You was chosen by the roll of dice to cook the potato soup for our...
+  text: You was chosen by the roll of dice to cook the potato soup
 - image: fore
-  text: Not so known inventor, Apocalypse the Gnome
+  text: I'll explain details later, for now you only need to get some tomatoes
 - image: fore
-  text: He discovered something that he describes as
+  text: As I see you a thief... Well...
 - image: fore
-  text: An explosive device that derives its destructive force from nuclear reactions, either fission... and...
+  text: Then we should rob this warehouse
 - image: fore
-  text: Well... Forget...
+  text: In order to do that you should kill... or knock down every guard in it 
 - image: fore
-  text: We called it "Big Fissing Bomb"
+  text: Do you have weapon?
 - image: fore
-  text: So with it he can explode our kingdom
+  text: ...
 - image: fore
-  text: And not to do that he wants potato soup every week
+  text: No?...
 - image: fore
-  text: There are two soup cookers before you, but they were professional cooks... and you as I see... a thief
+  text: I suppose it's no...
 - image: fore
-  text: Well... As the first task you should steal some onions, because royal onion storage is empty...
+  text: Well... I'll give you this Sword of Great Disaster, use it to kill all of the guards
 - image: fore
-  text: There is the commercial warehouse where you can find it I suppose
+  text: But please
+- image: fore
+  text: Don't lose it
 - image: fore
   text: Good luck!
+

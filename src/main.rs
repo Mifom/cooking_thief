@@ -21,8 +21,8 @@ mod util;
 
 #[derive(Resource)]
 pub enum State {
-    Scene(String),
-    Battle(String),
+    Scene(usize),
+    Battle(usize),
 }
 
 #[derive(StageLabel)]
@@ -38,17 +38,21 @@ async fn main() {
 
     world.insert_resource(Assets::load().await.unwrap());
     world.insert_resource(Time::default());
-    world.insert_resource(State::Battle("level_1".to_string()));
+    world.insert_resource(State::Scene(1));
     world.insert_resource(Events::<(Entity, MoveAction)>::default());
 
     let mut schedule = Schedule::default();
 
     schedule.add_stage(
+        Label::First,
+        SystemStage::parallel().with_system(Events::<(Entity, MoveAction)>::update_system),
+    );
+
+    schedule.add_stage(
         Label::Update,
         SystemStage::parallel()
-            .with_system(update_scene)
-            .with_system(change_state)
             .with_system(load_new_state)
+            .with_system(update_scene)
             .with_system(player_action)
             .with_system(move_body)
             .with_system(collide)
@@ -59,7 +63,8 @@ async fn main() {
             .with_system(collide_balls)
             .with_system(update_phrase)
             .with_system(swap_items)
-            .with_system(respawn_on_death),
+            .with_system(respawn_on_death)
+            .with_system(change_state.at_end()),
     );
 
     schedule.add_stage(
@@ -81,10 +86,6 @@ async fn main() {
         let screen = get_screen_size(screen_width(), screen_height());
         world.insert_resource(screen);
         world.get_resource_mut::<Time>().unwrap().update(dt);
-        world
-            .get_resource_mut::<Events<(Entity, MoveAction)>>()
-            .unwrap()
-            .update();
 
         schedule.run(&mut world);
 

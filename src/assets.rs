@@ -19,8 +19,8 @@ pub enum Error {
 #[derive(Resource)]
 pub struct Assets {
     pub images: HashMap<String, Texture2D>,
-    pub levels: HashMap<String, LevelConfig>,
-    pub scenes: HashMap<String, Scene>,
+    pub levels: HashMap<usize, LevelConfig>,
+    pub scenes: HashMap<usize, Scene>,
 }
 
 impl Assets {
@@ -37,14 +37,13 @@ impl Assets {
                         .await
                         .map_err(Error::File)?,
                 );
-            } else if path
+            } else if let Some(num) = path
                 .file_stem()
                 .and_then(OsStr::to_str)
-                .map(|prefix| prefix.starts_with("level"))
-                .unwrap_or_default()
+                .and_then(|prefix| prefix.strip_prefix("level_"))
             {
                 levels.insert(
-                    path.file_stem().unwrap().to_str().unwrap().to_owned(),
+                    num.parse().unwrap_or_else(|err| panic!("{num}: {err}")),
                     serde_yaml::from_slice(
                         &load_file(path.to_str().unwrap())
                             .await
@@ -52,14 +51,13 @@ impl Assets {
                     )
                     .map_err(Error::Parse)?,
                 );
-            } else if path
+            } else if let Some(num) = path
                 .file_stem()
                 .and_then(OsStr::to_str)
-                .map(|prefix| prefix.starts_with("scene"))
-                .unwrap_or_default()
+                .and_then(|prefix| prefix.strip_prefix("scene_"))
             {
                 scenes.insert(
-                    path.file_stem().unwrap().to_str().unwrap().to_owned(),
+                    num.parse().unwrap_or_else(|err| panic!("{num}: {err}")),
                     serde_yaml::from_slice(
                         &load_file(path.to_str().unwrap())
                             .await
