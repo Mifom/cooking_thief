@@ -2,6 +2,7 @@ use std::{collections::HashMap, ffi::OsStr, fs::read_dir};
 
 use bevy_ecs::system::Resource;
 use macroquad::{
+    audio::{load_sound, Sound},
     prelude::{load_file, FileError},
     texture::{load_texture, Texture2D},
 };
@@ -21,6 +22,7 @@ pub struct Assets {
     pub images: HashMap<String, Texture2D>,
     pub levels: HashMap<usize, LevelConfig>,
     pub scenes: HashMap<usize, Scene>,
+    pub sounds: HashMap<String, Sound>,
 }
 
 impl Assets {
@@ -28,12 +30,20 @@ impl Assets {
         let mut images = HashMap::new();
         let mut levels = HashMap::new();
         let mut scenes = HashMap::new();
+        let mut sounds = HashMap::new();
         for file in read_dir("assets").map_err(|_| Error::NoAssetsFolder)? {
             let path = file.map_err(Error::Io)?.path();
             if path.extension().map(|ext| ext == "png").unwrap_or_default() {
                 images.insert(
                     path.file_stem().unwrap().to_str().unwrap().to_owned(),
                     load_texture(path.to_str().unwrap())
+                        .await
+                        .map_err(Error::File)?,
+                );
+            } else if path.extension().map(|ext| ext == "ogg").unwrap_or_default() {
+                sounds.insert(
+                    path.file_stem().unwrap().to_str().unwrap().to_owned(),
+                    load_sound(path.to_str().unwrap())
                         .await
                         .map_err(Error::File)?,
                 );
@@ -71,6 +81,7 @@ impl Assets {
             images,
             levels,
             scenes,
+            sounds,
         })
     }
 }

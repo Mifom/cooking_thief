@@ -6,7 +6,11 @@ use bevy_ecs::{
     query::{Or, With, Without},
     system::{Commands, Query, Res, ResMut, Resource},
 };
-use macroquad::{prelude::*, rand::gen_range};
+use macroquad::{
+    audio::{play_sound, stop_sound, PlaySoundParams},
+    prelude::*,
+    rand::gen_range,
+};
 use serde::Deserialize;
 
 use crate::{
@@ -719,6 +723,8 @@ pub fn load_new_state(
     mut commands: Commands,
 ) {
     if state.is_changed() {
+        let sound = assets.sounds.get("Stealth").unwrap();
+        stop_sound(sound.clone());
         match state.as_ref() {
             crate::State::End => {
                 commands.insert_resource(EndText("That was hard. Press Q to quit".to_owned()));
@@ -729,6 +735,13 @@ pub fn load_new_state(
             }
             crate::State::Battle(num) => {
                 let config = assets.levels.get(num).unwrap();
+                play_sound(
+                    sound.clone(),
+                    PlaySoundParams {
+                        looped: true,
+                        volume: 1.,
+                    },
+                );
 
                 let rooms = &config.rooms;
                 let room_map = rooms
