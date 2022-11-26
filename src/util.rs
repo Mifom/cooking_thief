@@ -14,6 +14,7 @@ use macroquad::{
 use serde::Deserialize;
 
 use crate::{
+    assets::SCENES,
     graphics::{draw_centered_txt, draw_rect, Screen},
     level::push_room,
     scene::Scene,
@@ -30,7 +31,6 @@ pub const SPEED_STEPS: i32 = 10;
 pub const PLAYER_MAX_SPEED: f32 = 0.65;
 pub const PLAYER_RELOAD: f32 = 0.5;
 pub const SLASH_LEN: f32 = 0.02;
-pub const SCENES: usize = 2;
 
 #[derive(Resource)]
 pub struct EndText(pub String);
@@ -700,7 +700,7 @@ pub fn change_state(
                 crate::State::Scene(num) => *state = crate::State::Battle(*num),
                 crate::State::Battle(num) => {
                     let new_num = *num + 1;
-                    *state = if new_num == SCENES {
+                    *state = if new_num < SCENES.len() {
                         crate::State::Scene(new_num)
                     } else {
                         crate::State::End
@@ -708,11 +708,7 @@ pub fn change_state(
                 }
                 crate::State::End => exit(0),
             },
-            StateChange::Restart => match state.as_ref() {
-                crate::State::Scene(num) => *state = crate::State::Scene(*num),
-                crate::State::Battle(num) => *state = crate::State::Battle(*num),
-                crate::State::End => *state = crate::State::End,
-            },
+            StateChange::Restart => *state = state.as_ref().clone(),
         }
     }
 }
@@ -723,18 +719,18 @@ pub fn load_new_state(
     mut commands: Commands,
 ) {
     if state.is_changed() {
-        let sound = assets.sounds.get("Stealth").unwrap();
+        let sound = assets.sounds.get("stealth").unwrap();
         stop_sound(sound.clone());
         match state.as_ref() {
             crate::State::End => {
                 commands.insert_resource(EndText("That was hard. Press Q to quit".to_owned()));
             }
             crate::State::Scene(num) => {
-                let scene = assets.scenes.get(num).unwrap_or_else(|| panic!("{num}"));
+                let scene = assets.scenes.get(*num).unwrap_or_else(|| panic!("{num}"));
                 commands.insert_resource(scene.clone());
             }
             crate::State::Battle(num) => {
-                let config = assets.levels.get(num).unwrap();
+                let config = assets.levels.get(*num).unwrap();
                 play_sound(
                     sound.clone(),
                     PlaySoundParams {

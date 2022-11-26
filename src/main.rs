@@ -19,7 +19,7 @@ mod level;
 mod scene;
 mod util;
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub enum State {
     Scene(usize),
     Battle(usize),
@@ -41,7 +41,7 @@ async fn main() {
 
     world.insert_resource(Assets::load().await.unwrap());
     world.insert_resource(Time::default());
-    world.insert_resource(State::Scene(1));
+    world.insert_resource(State::Scene(0));
     world.insert_resource(Events::<(Entity, MoveAction)>::default());
 
     let mut schedule = Schedule::default();

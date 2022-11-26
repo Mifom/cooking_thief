@@ -1,18 +1,35 @@
-use std::{collections::HashMap, ffi::OsStr, fs::read_dir};
+use std::collections::HashMap;
 
 use bevy_ecs::system::Resource;
 use macroquad::{
-    audio::{load_sound, Sound},
-    prelude::{load_file, FileError},
-    texture::{load_texture, Texture2D},
+    audio::{load_sound_from_bytes, Sound},
+    prelude::FileError,
+    texture::Texture2D,
 };
 
 use crate::{level::LevelConfig, scene::Scene};
 
+const IMAGES: [(&str, &[u8]); 4] = [
+    ("player", include_bytes!("../assets/player.png")),
+    ("back", include_bytes!("../assets/back.png")),
+    ("items", include_bytes!("../assets/items.png")),
+    ("fore", include_bytes!("../assets/fore.png")),
+];
+
+const LEVELS: [&str; 2] = [
+    include_str!("../assets/level_1.yaml"),
+    include_str!("../assets/level_2.yaml"),
+];
+
+pub const SCENES: [&str; 2] = [
+    include_str!("../assets/scene_1.yaml"),
+    include_str!("../assets/scene_2.yaml"),
+];
+
+const SOUNDS: [(&str, &[u8]); 1] = [("stealth", include_bytes!("../assets/Stealth.ogg"))];
+
 #[derive(Debug)]
 pub enum Error {
-    NoAssetsFolder,
-    Io(std::io::Error),
     File(FileError),
     Parse(serde_yaml::Error),
 }
@@ -20,63 +37,41 @@ pub enum Error {
 #[derive(Resource)]
 pub struct Assets {
     pub images: HashMap<String, Texture2D>,
-    pub levels: HashMap<usize, LevelConfig>,
-    pub scenes: HashMap<usize, Scene>,
+    pub levels: Vec<LevelConfig>,
+    pub scenes: Vec<Scene>,
     pub sounds: HashMap<String, Sound>,
 }
 
 impl Assets {
     pub async fn load() -> Result<Self, Error> {
-        let mut images = HashMap::new();
-        let mut levels = HashMap::new();
-        let mut scenes = HashMap::new();
+        let images = IMAGES
+            .into_iter()
+            .map(|(key, val)| {
+                (
+                    key.to_owned(),
+                    Texture2D::from_file_with_format(
+                        val,
+                        Some(macroquad::prelude::ImageFormat::Png),
+                    ),
+                )
+            })
+            .collect();
         let mut sounds = HashMap::new();
-        for file in read_dir("assets").map_err(|_| Error::NoAssetsFolder)? {
-            let path = file.map_err(Error::Io)?.path();
-            if path.extension().map(|ext| ext == "png").unwrap_or_default() {
-                images.insert(
-                    path.file_stem().unwrap().to_str().unwrap().to_owned(),
-                    load_texture(path.to_str().unwrap())
-                        .await
-                        .map_err(Error::File)?,
-                );
-            } else if path.extension().map(|ext| ext == "ogg").unwrap_or_default() {
-                sounds.insert(
-                    path.file_stem().unwrap().to_str().unwrap().to_owned(),
-                    load_sound(path.to_str().unwrap())
-                        .await
-                        .map_err(Error::File)?,
-                );
-            } else if let Some(num) = path
-                .file_stem()
-                .and_then(OsStr::to_str)
-                .and_then(|prefix| prefix.strip_prefix("level_"))
-            {
-                levels.insert(
-                    num.parse().unwrap_or_else(|err| panic!("{num}: {err}")),
-                    serde_yaml::from_slice(
-                        &load_file(path.to_str().unwrap())
-                            .await
-                            .map_err(Error::File)?,
-                    )
-                    .map_err(Error::Parse)?,
-                );
-            } else if let Some(num) = path
-                .file_stem()
-                .and_then(OsStr::to_str)
-                .and_then(|prefix| prefix.strip_prefix("scene_"))
-            {
-                scenes.insert(
-                    num.parse().unwrap_or_else(|err| panic!("{num}: {err}")),
-                    serde_yaml::from_slice(
-                        &load_file(path.to_str().unwrap())
-                            .await
-                            .map_err(Error::File)?,
-                    )
-                    .map_err(Error::Parse)?,
-                );
-            }
+        for (key, val) in SOUNDS {
+            sounds.insert(
+                key.to_owned(),
+                load_sound_from_bytes(val).await.map_err(Error::File)?,
+            );
         }
+        let levels = LEVELS
+            .into_iter()
+            .map(|level| serde_yaml::from_str(level).map_err(Error::Parse))
+            .collect::<Result<_, _>>()?;
+        let scenes = SCENES
+            .into_iter()
+            .map(|scene| serde_yaml::from_str(scene).map_err(Error::Parse))
+            .collect::<Result<_, _>>()?;
+
         Ok(Self {
             images,
             levels,
