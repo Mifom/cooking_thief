@@ -23,6 +23,7 @@ mod util;
 pub enum State {
     Scene(usize),
     Battle(usize),
+    End,
 }
 
 #[derive(StageLabel)]
@@ -66,6 +67,7 @@ async fn main() {
             .with_system(update_phrase)
             .with_system(swap_items)
             .with_system(respawn_on_death)
+            .with_system(update_end)
             .with_system(change_state.at_end()),
     );
 
@@ -74,6 +76,7 @@ async fn main() {
         SystemStage::single_threaded()
             .with_system(draw_screen)
             .with_system(draw_scene.after(draw_screen))
+            .with_system(draw_end_text.after(draw_screen))
             .with_system(draw_doors.after(draw_screen))
             .with_system(draw_player.after(draw_doors).before(draw_phrase))
             .with_system(draw_balls.after(draw_doors).before(draw_phrase))

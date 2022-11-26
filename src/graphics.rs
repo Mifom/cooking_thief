@@ -13,7 +13,7 @@ use macroquad::{
 
 use crate::{
     assets::Assets,
-    util::{Item, Player, BALL_RADIUS, RATIO_W_H},
+    util::{EndText, Item, Player, BALL_RADIUS, RATIO_W_H},
 };
 
 #[derive(Resource)]

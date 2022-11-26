@@ -1,11 +1,10 @@
 TODOs for this project:
 
-- [ ] Level Design
+- [X] Level Design
   - [X] Doors
   - [X] Level definition from .yaml
   - [X] Items
   - [X] Entrance/Exit
-  - [ ] NPC(?)
 - [X] Story mode
   - [X] Basic view of story(LN style)
   - [X] load from .yaml
@@ -16,7 +15,6 @@ TODOs for this project:
 - [ ] Story
   - [X] Main plot
   - [X] Receipt holder
-  - [ ] NPC(?)
   - [ ] Text
 - [ ] Graphics
   - [ ] Environment graphics

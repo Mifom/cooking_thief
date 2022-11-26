@@ -1,5 +1,5 @@
 #![allow(clippy::type_complexity)] // To suppress clippy warnings on query types
-use std::{cmp::Ordering, collections::HashMap};
+use std::{cmp::Ordering, collections::HashMap, process::exit};
 
 use bevy_ecs::{
     prelude::{Bundle, Component, Entity, EventReader, EventWriter},
@@ -26,6 +26,10 @@ pub const SPEED_STEPS: i32 = 10;
 pub const PLAYER_MAX_SPEED: f32 = 0.65;
 pub const PLAYER_RELOAD: f32 = 0.5;
 pub const SLASH_LEN: f32 = 0.02;
+pub const SCENES: usize = 2;
+
+#[derive(Resource)]
+pub struct EndText(pub String);
 
 #[derive(Resource, Debug)]
 pub enum StateChange {
@@ -340,7 +344,10 @@ pub fn player_action(
             }
         };
     }
-    if is_mouse_button_down(MouseButton::Left) && visible.is_some() && reload.0 == 0. {
+    if is_mouse_button_down(MouseButton::Left)
+        && (visible.is_some() || cfg!(feature = "cheat"))
+        && reload.0 == 0.
+    {
         match item {
             Item::Vegetable { .. } => {
                 reload.0 = PLAYER_RELOAD;
@@ -660,6 +667,7 @@ pub fn collide_balls(
         }
     }
 }
+
 pub fn change_state(
     mut state: ResMut<crate::State>,
     state_change: Option<Res<StateChange>>,
@@ -686,11 +694,20 @@ pub fn change_state(
         match *state_change {
             StateChange::Next => match state.as_ref() {
                 crate::State::Scene(num) => *state = crate::State::Battle(*num),
-                crate::State::Battle(num) => *state = crate::State::Scene(*num + 1),
+                crate::State::Battle(num) => {
+                    let new_num = *num + 1;
+                    *state = if new_num == SCENES {
+                        crate::State::Scene(new_num)
+                    } else {
+                        crate::State::End
+                    };
+                }
+                crate::State::End => exit(0),
             },
             StateChange::Restart => match state.as_ref() {
                 crate::State::Scene(num) => *state = crate::State::Scene(*num),
                 crate::State::Battle(num) => *state = crate::State::Battle(*num),
+                crate::State::End => *state = crate::State::End,
             },
         }
     }
@@ -703,6 +720,9 @@ pub fn load_new_state(
 ) {
     if state.is_changed() {
         match state.as_ref() {
+            crate::State::End => {
+                commands.insert_resource(EndText("That was hard. Press Q to quit".to_owned()));
+            }
             crate::State::Scene(num) => {
                 let scene = assets.scenes.get(num).unwrap_or_else(|| panic!("{num}"));
                 commands.insert_resource(scene.clone());
@@ -849,6 +869,19 @@ pub fn death_screen(player: Query<&Health, With<Player>>, screen: Res<Screen>) {
         Color::from_rgba(128, 0, 0, 128),
     );
     draw_centered_txt(&screen, "You're dead. Press R to continue", 0.5, 0.1, WHITE);
+}
+
+pub fn draw_end_text(screen: Res<Screen>, end_text: Option<Res<EndText>>) {
+    if let Some(end_text) = end_text {
+        draw_rect(&screen, 0., 0., RATIO_W_H, 1., BLACK);
+        draw_centered_txt(&screen, &end_text.0, 0.2, 0.08, WHITE);
+    }
+}
+
+pub fn update_end(end_text: Option<Res<EndText>>) {
+    if end_text.is_some() && is_key_pressed(KeyCode::Q) {
+        exit(0)
+    }
 }
 
 #[derive(Clone, serde::Deserialize, Component, PartialEq, Eq)]
