@@ -33,7 +33,7 @@ pub enum Label {
     Draw,
 }
 
-#[macroquad::main("Super cooking simulator")]
+#[macroquad::main("Cooking thief")]
 async fn main() {
     show_mouse(false);
 

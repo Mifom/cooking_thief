@@ -269,6 +269,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cooking_thief"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "macroquad",
+ "serde",
+ "serde_yaml",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,16 +837,6 @@ name = "smallvec"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
-
-[[package]]
-name = "super_cooking_simulator"
-version = "0.1.0"
-dependencies = [
- "bevy_ecs",
- "macroquad",
- "serde",
- "serde_yaml",
-]
 
 [[package]]
 name = "syn"
