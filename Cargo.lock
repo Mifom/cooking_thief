@@ -276,6 +276,7 @@ dependencies = [
  "macroquad",
  "serde",
  "serde_yaml",
+ "windows-sys",
 ]
 
 [[package]]
