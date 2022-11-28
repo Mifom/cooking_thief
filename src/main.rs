@@ -24,16 +24,6 @@ pub enum State {
     End,
 }
 
-#[cfg(windows)]
-mod windows {
-    use windows_sys::Win32::UI::WindowsAndMessaging::SetCursor;
-    pub fn hide_win_cursor() {
-        unsafe {
-            SetCursor(0);
-        }
-    }
-}
-
 #[macroquad::main("Cooking thief")]
 async fn main() {
     show_mouse(false);
@@ -42,8 +32,6 @@ async fn main() {
     let mut state = State::Scene(0, assets.scenes[0].clone());
 
     loop {
-        #[cfg(windows)]
-        windows::hide_win_cursor();
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
 
