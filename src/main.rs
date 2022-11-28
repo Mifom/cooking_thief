@@ -62,7 +62,7 @@ pub fn update(state: &mut crate::State, screen: &Screen, assets: &Assets, dt: f3
     let mut next = None;
     match state {
         crate::State::Scene(_, scene) => next = update_scene(scene, dt),
-        crate::State::Battle(_, level) => next = update_level(level, screen, dt),
+        crate::State::Battle(_, level) => next = update_level(level, screen, assets, dt),
         crate::State::End => {
             if is_key_pressed(KeyCode::Q) {
                 next = Some(true);

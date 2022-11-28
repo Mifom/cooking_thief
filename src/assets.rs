@@ -24,7 +24,13 @@ pub const SCENES: [&str; 2] = [
     include_str!("../assets/scene_2.yaml"),
 ];
 
-const SOUNDS: [(&str, &[u8]); 1] = [("stealth", include_bytes!("../assets/Stealth.ogg"))];
+const SOUNDS: [(&str, &[u8]); 5] = [
+    ("stealth", include_bytes!("../assets/Stealth.ogg")),
+    ("sword", include_bytes!("../assets/sword.wav")),
+    ("splat", include_bytes!("../assets/splat.wav")),
+    ("throw", include_bytes!("../assets/throw.wav")),
+    ("item", include_bytes!("../assets/item.ogg")),
+];
 
 pub struct Assets {
     pub images: HashMap<String, Texture2D>,

@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap, hash::Hash};
 
-use macroquad::{prelude::*, rand::gen_range};
+use macroquad::{audio::play_sound_once, prelude::*, rand::gen_range};
 use serde::Deserialize;
 
 use crate::{
@@ -501,7 +501,12 @@ impl Level {
     }
 }
 
-fn player_action(screen: &Screen, player: &mut Player, balls: &mut Vec<Ball>) -> MoveAction {
+fn player_action(
+    screen: &Screen,
+    player: &mut Player,
+    balls: &mut Vec<Ball>,
+    assets: &Assets,
+) -> MoveAction {
     if player.health == Health::Dead {
         return MoveAction::default();
     }
@@ -564,6 +569,7 @@ fn player_action(screen: &Screen, player: &mut Player, balls: &mut Vec<Ball>) ->
                     room: player.body.room,
                     item: player.item.clone(),
                 });
+                play_sound_once(assets.sounds["throw"]);
             }
             _ => {
                 player.body.phrase = Some(Phrase {
@@ -577,7 +583,7 @@ fn player_action(screen: &Screen, player: &mut Player, balls: &mut Vec<Ball>) ->
     move_action
 }
 
-fn enemy_action(enemy: &mut Enemy, player: &mut Player, dt: f32) -> MoveAction {
+fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32) -> MoveAction {
     if matches!(enemy.health, Health::Dead) {
         return MoveAction::default();
     }
@@ -654,6 +660,7 @@ fn enemy_action(enemy: &mut Enemy, player: &mut Player, dt: f32) -> MoveAction {
     if slash && enemy.reload.0 == 0. {
         enemy.reload.0 = PLAYER_RELOAD;
         player.health.decrease();
+        play_sound_once(assets.sounds["sword"]);
     }
     move_action
 }
@@ -758,7 +765,7 @@ fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>) -> bool 
     false
 }
 
-fn swap_items(item_crate: &mut ItemCrate, player: &mut Player) {
+fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) {
     if item_crate.room.0 != player.body.room.0 {
         return;
     }
@@ -768,16 +775,22 @@ fn swap_items(item_crate: &mut ItemCrate, player: &mut Player) {
             <= player.body.form.direction_len(diff) + item_crate.form.direction_len(diff) + 0.02
     {
         (player.item, item_crate.item) = (item_crate.item.clone(), player.item.clone());
+        play_sound_once(assets.sounds["item"]);
     }
 }
 
-pub fn update_level(level: &mut Level, screen: &Screen, dt: f32) -> Option<bool> {
+pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32) -> Option<bool> {
     let mut next = None;
-    let player_action = player_action(screen, &mut level.player, &mut level.balls);
+    let player_action = player_action(screen, &mut level.player, &mut level.balls, assets);
     level
         .enemies
         .iter_mut()
-        .map(|enemy| (enemy_action(enemy, &mut level.player, dt), &mut enemy.body))
+        .map(|enemy| {
+            (
+                enemy_action(enemy, &mut level.player, assets, dt),
+                &mut enemy.body,
+            )
+        })
         .collect::<Vec<_>>()
         .into_iter()
         .chain(std::iter::once((player_action, &mut level.player.body)))
@@ -830,7 +843,7 @@ pub fn update_level(level: &mut Level, screen: &Screen, dt: f32) -> Option<bool>
     level.balls = level
         .balls
         .iter_mut()
-        .filter_map(|ball| {
+        .map(|ball| {
             ball.position.0 += ball.velocity.0 * dt;
             for enemy in &mut level.enemies {
                 if ball.room != enemy.body.room {
@@ -842,7 +855,21 @@ pub fn update_level(level: &mut Level, screen: &Screen, dt: f32) -> Option<bool>
                     return None;
                 }
             }
+            if ball.position.0.x < WALL_SIZE + BALL_RADIUS
+                || ball.position.0.x > RATIO_W_H - WALL_SIZE - BALL_RADIUS
+                || ball.position.0.y < WALL_SIZE + BALL_RADIUS
+                || ball.position.0.y > 1. - WALL_SIZE - BALL_RADIUS
+            {
+                return None;
+            }
+
             Some(ball.clone())
+        })
+        .filter_map(|ball| {
+            if ball.is_none() {
+                play_sound_once(assets.sounds["splat"]);
+            }
+            ball
         })
         .collect();
 
@@ -866,7 +893,7 @@ pub fn update_level(level: &mut Level, screen: &Screen, dt: f32) -> Option<bool>
     level
         .crates
         .iter_mut()
-        .for_each(|item_crate| swap_items(item_crate, &mut level.player));
+        .for_each(|item_crate| swap_items(item_crate, &mut level.player, assets));
 
     if level.player.health == Health::Dead && is_key_pressed(KeyCode::R) {
         next = Some(false);
