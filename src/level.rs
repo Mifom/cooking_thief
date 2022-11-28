@@ -588,7 +588,7 @@ fn player_action(
 }
 
 fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32) -> MoveAction {
-    if matches!(enemy.health, Health::Dead) {
+    if enemy.health == Health::Dead {
         enemy.body.form = Form::Rect {
             width: 1.7 * PLAYER_RADIUS,
             height: 0.9 * PLAYER_RADIUS,
@@ -601,7 +601,9 @@ fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32
             || diff.length()
                 < PLAYER_RADIUS + player.body.form.direction_len(diff) + SLASH_LEN / 2.);
     let mut phrase = None;
-    enemy.state = if player_visible {
+    enemy.state = if player.health == Health::Dead {
+        EnemyState::Idle
+    } else if player_visible {
         if !matches!(enemy.state, EnemyState::Fight(_, _)) {
             phrase = Some(Phrase {
                 text: "Here you are!".to_owned(),
