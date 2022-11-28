@@ -508,6 +508,10 @@ fn player_action(
     assets: &Assets,
 ) -> MoveAction {
     if player.health == Health::Dead {
+        player.body.form = Form::Rect {
+            width: 1.5 * PLAYER_RADIUS,
+            height: 0.9 * PLAYER_RADIUS,
+        };
         return MoveAction::default();
     }
     let mut move_direction = (0, 0);
@@ -971,21 +975,28 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                 x: 2. * level.player.body.form.x_r() * screen.height,
                 y: 2. * level.player.body.form.y_r() * screen.height,
             }),
-            source: if level.player.visible {
-                Some(Rect {
+            source: Some(if level.player.health == Health::Dead {
+                Rect {
+                    x: 280.,
+                    y: 10.,
+                    w: 150.,
+                    h: 90.,
+                }
+            } else if level.player.visible {
+                Rect {
                     x: 10.,
                     y: 10.,
                     w: 100.,
                     h: 150.,
-                })
+                }
             } else {
-                Some(Rect {
+                Rect {
                     x: 120.,
                     y: 10.,
                     w: 150.,
                     h: 150.,
-                })
-            },
+                }
+            }),
             flip_x: level.player.body.sight.0.x < 0.,
             ..Default::default()
         },
