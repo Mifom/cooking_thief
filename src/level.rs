@@ -159,7 +159,6 @@ pub struct Post(pub Vec2);
 pub struct Enemy {
     pub body: Body,
     pub reload: Reload,
-    // pub slash: i8,
     pub state: EnemyState,
     pub post: Post,
     pub health: Health,
@@ -336,8 +335,9 @@ pub fn push_room(
                 Enemy {
                     body: Body {
                         position: Position(position),
-                        form: Form::Circle {
-                            radius: PLAYER_RADIUS,
+                        form: Form::Rect {
+                            width: PLAYER_RADIUS,
+                            height: 1.7 * PLAYER_RADIUS,
                         },
                         sight: Sight(Vec2::new(1., 0.)),
                         speed: Speed::default(),
@@ -585,6 +585,10 @@ fn player_action(
 
 fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32) -> MoveAction {
     if matches!(enemy.health, Health::Dead) {
+        enemy.body.form = Form::Rect {
+            width: 1.7 * PLAYER_RADIUS,
+            height: 0.9 * PLAYER_RADIUS,
+        };
         return MoveAction::default();
     }
     let diff = enemy.body.position.0 - player.body.position.0;
@@ -662,6 +666,17 @@ fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32
         player.health.decrease();
         play_sound_once(assets.sounds["sword"]);
     }
+    enemy.body.form = if enemy.reload.0 < 0.2 {
+        Form::Rect {
+            width: PLAYER_RADIUS,
+            height: 1.7 * PLAYER_RADIUS,
+        }
+    } else {
+        Form::Rect {
+            width: 1.15 * PLAYER_RADIUS,
+            height: 1.7 * PLAYER_RADIUS,
+        }
+    };
     move_action
 }
 
@@ -1002,12 +1017,41 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
         if enemy.body.room != level.player.body.room {
             continue;
         }
-        draw_circ(
-            &screen,
-            enemy.body.position.0.x,
-            enemy.body.position.0.y,
-            PLAYER_RADIUS,
-            ORANGE,
+        draw_texture_ex(
+            assets.images["enemy"],
+            (enemy.body.position.0.x - enemy.body.form.x_r()) * screen.height + screen.x,
+            (enemy.body.position.0.y - enemy.body.form.y_r()) * screen.height + screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2 {
+                    x: 2. * enemy.body.form.x_r() * screen.height,
+                    y: 2. * enemy.body.form.y_r() * screen.height,
+                }),
+                source: Some(if enemy.health == Health::Dead {
+                    Rect {
+                        x: 250.,
+                        y: 10.,
+                        w: 170.,
+                        h: 90.,
+                    }
+                } else if enemy.reload.0 < 0.2 {
+                    Rect {
+                        x: 10.,
+                        y: 10.,
+                        w: 100.,
+                        h: 170.,
+                    }
+                } else {
+                    Rect {
+                        x: 120.,
+                        y: 10.,
+                        w: 115.,
+                        h: 170.,
+                    }
+                }),
+                flip_x: enemy.body.sight.0.x < 0.,
+                ..Default::default()
+            },
         );
         if enemy.health == Health::Dead {
             draw_circ(

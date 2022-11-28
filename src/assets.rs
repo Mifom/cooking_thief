@@ -7,8 +7,9 @@ use macroquad::{
 
 use crate::{level::LevelConfig, scene::Scene};
 
-const IMAGES: [(&str, &[u8]); 4] = [
+const IMAGES: [(&str, &[u8]); 5] = [
     ("player", include_bytes!("../assets/player.png")),
+    ("enemy", include_bytes!("../assets/enemy.png")),
     ("back", include_bytes!("../assets/back.png")),
     ("items", include_bytes!("../assets/items.png")),
     ("fore", include_bytes!("../assets/fore.png")),
