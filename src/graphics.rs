@@ -1,8 +1,4 @@
 #![allow(unused)]
-use bevy_ecs::{
-    query::With,
-    system::{Query, Res, Resource},
-};
 use macroquad::{
     prelude::{mouse_position, Color, Vec2, BLACK, WHITE},
     shapes::{draw_circle, draw_line, draw_rectangle},
@@ -13,10 +9,10 @@ use macroquad::{
 
 use crate::{
     assets::Assets,
-    util::{EndText, Item, Player, BALL_RADIUS, RATIO_W_H},
+    level::{Item, BALL_RADIUS},
+    RATIO_W_H,
 };
 
-#[derive(Resource)]
 pub struct Screen {
     pub x: f32,
     pub y: f32,
@@ -43,11 +39,6 @@ pub fn get_screen_size(width: f32, height: f32) -> Screen {
             height: new_height,
         }
     }
-}
-
-pub fn draw_screen(screen: Res<Screen>) {
-    clear_background(BLACK);
-    draw_rectangle(screen.x, screen.y, screen.width, screen.height, WHITE);
 }
 
 pub fn draw_rect(screen: &Screen, x: f32, y: f32, w: f32, h: f32, color: Color) {
@@ -157,10 +148,13 @@ pub fn draw_centered_txt(screen: &Screen, text: &str, y: f32, font: f32, color: 
     );
 }
 
-pub fn draw_cursor(screen: Res<Screen>, assets: Res<Assets>, player: Query<&Item, With<Player>>) {
-    let item = player.get_single().unwrap_or(&Item::Sword);
+pub fn draw_cursor(state: &crate::State, assets: &Assets, screen: &Screen) {
+    let cursor = match state {
+        crate::State::Battle(_, level) => &level.player.item,
+        _ => &Item::Sword,
+    };
+
     let (x_m, y_m) = mouse_position();
-    let rect = item.rect();
     draw_texture_ex(
         assets.images["items"],
         x_m,
@@ -171,7 +165,7 @@ pub fn draw_cursor(screen: Res<Screen>, assets: Res<Assets>, player: Query<&Item
                 x: 3. * BALL_RADIUS * screen.height,
                 y: 3. * BALL_RADIUS * screen.height,
             }),
-            source: Some(rect),
+            source: Some(cursor.rect()),
             ..Default::default()
         },
     );

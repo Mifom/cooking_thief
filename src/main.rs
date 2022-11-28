@@ -1,37 +1,29 @@
 #![warn(clippy::semicolon_if_nothing_returned)]
-use graphics::{draw_cursor, get_screen_size};
-use level::{draw_crates, draw_phrase, draw_player};
-use util::*;
+use assets::SCENES;
+use graphics::{draw_centered_txt, draw_cursor, draw_rect, get_screen_size, Screen};
+use level::{draw_level, update_level, Level};
+use scene::{draw_scene, update_scene, Scene};
 
-use bevy_ecs::prelude::*;
-use macroquad::prelude::*;
-
-use crate::{
-    assets::Assets,
-    graphics::draw_screen,
-    level::{draw_balls, draw_doors, draw_enemies},
-    scene::{draw_scene, update_scene},
+use macroquad::{
+    audio::{play_sound, stop_sound, PlaySoundParams},
+    prelude::*,
 };
+
+use crate::assets::Assets;
 
 mod assets;
 mod graphics;
 mod level;
 mod scene;
-mod util;
 
-#[derive(Resource, Clone)]
+pub const RATIO_W_H: f32 = 16. / 9.;
+
 pub enum State {
-    Scene(usize),
-    Battle(usize),
+    Scene(usize, Scene),
+    Battle(usize, Level),
     End,
 }
 
-#[derive(StageLabel)]
-pub enum Label {
-    First,
-    Update,
-    Draw,
-}
 #[cfg(windows)]
 mod windows {
     use windows_sys::Win32::UI::WindowsAndMessaging::SetCursor;
@@ -46,66 +38,90 @@ mod windows {
 async fn main() {
     show_mouse(false);
 
-    let mut world = World::new();
-
-    world.insert_resource(Assets::load().await.unwrap());
-    world.insert_resource(Time::default());
-    world.insert_resource(State::Scene(0));
-    world.insert_resource(Events::<(Entity, MoveAction)>::default());
-
-    let mut schedule = Schedule::default();
-
-    schedule.add_stage(
-        Label::First,
-        SystemStage::parallel().with_system(Events::<(Entity, MoveAction)>::update_system),
-    );
-
-    schedule.add_stage(
-        Label::Update,
-        SystemStage::parallel()
-            .with_system(load_new_state)
-            .with_system(update_scene)
-            .with_system(player_action)
-            .with_system(move_body)
-            .with_system(collide)
-            .with_system(use_doors)
-            .with_system(enemies_actions)
-            .with_system(update_reload)
-            .with_system(update_balls)
-            .with_system(collide_balls)
-            .with_system(update_phrase)
-            .with_system(swap_items)
-            .with_system(respawn_on_death)
-            .with_system(update_end)
-            .with_system(change_state.at_end()),
-    );
-
-    schedule.add_stage(
-        Label::Draw,
-        SystemStage::single_threaded()
-            .with_system(draw_screen)
-            .with_system(draw_scene.after(draw_screen))
-            .with_system(draw_end_text.after(draw_screen))
-            .with_system(draw_doors.after(draw_screen))
-            .with_system(draw_player.after(draw_doors).before(draw_phrase))
-            .with_system(draw_balls.after(draw_doors).before(draw_phrase))
-            .with_system(draw_enemies.after(draw_doors).before(draw_phrase))
-            .with_system(draw_crates.after(draw_doors).before(draw_phrase))
-            .with_system(draw_phrase.after(draw_doors))
-            .with_system(death_screen.after(draw_phrase).after(draw_scene))
-            .with_system(draw_cursor.at_end()),
-    );
+    let assets = Assets::load().await;
+    let mut state = State::Scene(0, assets.scenes[0].clone());
 
     loop {
         #[cfg(windows)]
         windows::hide_win_cursor();
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
-        world.insert_resource(screen);
-        world.get_resource_mut::<Time>().unwrap().update(dt);
 
-        schedule.run(&mut world);
+        update(&mut state, &screen, &assets, dt);
+
+        draw(&screen, &state, &assets);
+        // world.insert_resource(screen);
+        // world.get_resource_mut::<Time>().unwrap().update(dt);
+
+        // schedule.run(&mut world);
 
         next_frame().await;
     }
+}
+pub fn update(state: &mut crate::State, screen: &Screen, assets: &Assets, dt: f32) {
+    let mut next = None;
+    match state {
+        crate::State::Scene(_, scene) => next = update_scene(scene, dt),
+        crate::State::Battle(_, level) => next = update_level(level, screen, dt),
+        crate::State::End => {
+            if is_key_pressed(KeyCode::Q) {
+                next = Some(true);
+            }
+        }
+    }
+    if let Some(next) = next {
+        change_state(state, next, assets);
+    }
+}
+
+fn change_state(state: &mut crate::State, next: bool, assets: &Assets) {
+    let sound = assets.sounds.get("stealth").unwrap();
+    stop_sound(sound.clone());
+    *state = match (next, &state) {
+        (true, crate::State::Scene(num, _)) | (false, crate::State::Battle(num, _)) => {
+            let config = assets.levels.get(*num).unwrap();
+            play_sound(
+                sound.clone(),
+                PlaySoundParams {
+                    looped: true,
+                    volume: 1.,
+                },
+            );
+
+            crate::State::Battle(*num, Level::load(config))
+        }
+        (false, crate::State::Scene(num, _)) => {
+            crate::State::Scene(*num, assets.scenes[*num].clone())
+        }
+        (true, crate::State::Battle(num, _)) => {
+            let new_num = *num + 1;
+            if new_num < SCENES.len() {
+                crate::State::Scene(new_num, assets.scenes[new_num].clone())
+            } else {
+                crate::State::End
+            }
+        }
+        (next, crate::State::End) => {
+            if next {
+                std::process::exit(0)
+            } else {
+                crate::State::End
+            }
+        }
+    };
+}
+
+pub fn draw(screen: &Screen, state: &crate::State, assets: &Assets) {
+    clear_background(BLACK);
+    draw_rectangle(screen.x, screen.y, screen.width, screen.height, WHITE);
+    match state {
+        crate::State::Scene(_, scene) => draw_scene(scene, assets, screen),
+        crate::State::Battle(_, level) => draw_level(level, assets, screen),
+        crate::State::End => {
+            draw_rect(screen, 0., 0., RATIO_W_H, 1., BLACK);
+            draw_centered_txt(screen, "That was hard. Press Q to quit.", 0.4, 0.08, WHITE);
+        }
+    }
+
+    draw_cursor(state, assets, screen);
 }

@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
-use bevy_ecs::system::Resource;
 use macroquad::{
     audio::{load_sound_from_bytes, Sound},
-    prelude::FileError,
     texture::Texture2D,
 };
 
@@ -28,13 +26,6 @@ pub const SCENES: [&str; 2] = [
 
 const SOUNDS: [(&str, &[u8]); 1] = [("stealth", include_bytes!("../assets/Stealth.ogg"))];
 
-#[derive(Debug)]
-pub enum Error {
-    File(FileError),
-    Parse(serde_yaml::Error),
-}
-
-#[derive(Resource)]
 pub struct Assets {
     pub images: HashMap<String, Texture2D>,
     pub levels: Vec<LevelConfig>,
@@ -43,7 +34,7 @@ pub struct Assets {
 }
 
 impl Assets {
-    pub async fn load() -> Result<Self, Error> {
+    pub async fn load() -> Self {
         let images = IMAGES
             .into_iter()
             .map(|(key, val)| {
@@ -58,25 +49,22 @@ impl Assets {
             .collect();
         let mut sounds = HashMap::new();
         for (key, val) in SOUNDS {
-            sounds.insert(
-                key.to_owned(),
-                load_sound_from_bytes(val).await.map_err(Error::File)?,
-            );
+            sounds.insert(key.to_owned(), load_sound_from_bytes(val).await.unwrap());
         }
         let levels = LEVELS
             .into_iter()
-            .map(|level| serde_yaml::from_str(level).map_err(Error::Parse))
-            .collect::<Result<_, _>>()?;
+            .map(|level| serde_yaml::from_str(level).unwrap())
+            .collect();
         let scenes = SCENES
             .into_iter()
-            .map(|scene| serde_yaml::from_str(scene).map_err(Error::Parse))
-            .collect::<Result<_, _>>()?;
+            .map(|scene| serde_yaml::from_str(scene).unwrap())
+            .collect();
 
-        Ok(Self {
+        Self {
             images,
             levels,
             scenes,
             sounds,
-        })
+        }
     }
 }
