@@ -7,7 +7,7 @@ use macroquad::{
 
 use crate::{level::LevelConfig, scene::Scene};
 
-const IMAGES: [(&str, &[u8]); 8] = [
+const IMAGES: [(&str, &[u8]); 9] = [
     ("player", include_bytes!("../assets/player.png")),
     ("enemy", include_bytes!("../assets/enemy.png")),
     ("back", include_bytes!("../assets/back.png")),
@@ -16,6 +16,7 @@ const IMAGES: [(&str, &[u8]); 8] = [
     ("level_back", include_bytes!("../assets/level_back.png")),
     ("doors", include_bytes!("../assets/doors.png")),
     ("blood", include_bytes!("../assets/blood.png")),
+    ("crate", include_bytes!("../assets/crate.png")),
 ];
 
 const LEVELS: [&str; 2] = [

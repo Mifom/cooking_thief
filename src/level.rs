@@ -18,6 +18,7 @@ pub const SPEED_STEPS: i32 = 10;
 pub const PLAYER_MAX_SPEED: f32 = 0.65;
 pub const PLAYER_RELOAD: f32 = 0.5;
 pub const SLASH_LEN: f32 = 0.02;
+pub const HEAL_TIME: f32 = 5.;
 
 #[derive(Clone)]
 pub struct Velocity(pub Vec2);
@@ -99,6 +100,7 @@ pub struct Player {
     pub health: Health,
     pub item: Item,
     pub visible: bool,
+    pub heal_time: f32,
 }
 
 #[derive(Clone, serde::Deserialize, PartialEq, Eq)]
@@ -464,6 +466,7 @@ impl Level {
             health: Health::Full,
             item: Item::Sword,
             visible: false,
+            heal_time: HEAL_TIME,
         };
         let mut enemies = Vec::new();
         let mut crates = Vec::new();
@@ -506,6 +509,7 @@ fn player_action(
     player: &mut Player,
     balls: &mut Vec<Ball>,
     assets: &Assets,
+    dt: f32,
 ) -> MoveAction {
     if player.health == Health::Dead {
         player.body.form = Form::Rect {
@@ -581,6 +585,13 @@ fn player_action(
                     time: 3.,
                 });
             }
+        }
+    }
+    if player.health == Health::Low {
+        player.heal_time -= dt;
+        if player.heal_time <= 0. {
+            player.heal_time = HEAL_TIME;
+            player.health = Health::Full;
         }
     }
 
@@ -686,9 +697,26 @@ fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32
     move_action
 }
 
-fn collide(mut bodies: Vec<&mut Body>) {
+fn collide(mut bodies: Vec<&mut Body>, crates: &Vec<ItemCrate>) {
     let mut shifts = HashMap::new();
     for (left_id, left) in bodies.iter().enumerate() {
+        for item_crate in crates {
+            if left.room != item_crate.room {
+                continue;
+            }
+
+            let diff = left.position.0 - item_crate.position.0;
+            let size = left.form.direction_len(diff) + item_crate.form.direction_len(diff);
+            let penetration = size - diff.length();
+
+            if penetration > 0. {
+                let shift = diff.normalize() * penetration;
+                shifts
+                    .entry(left_id)
+                    .and_modify(|v| *v += shift)
+                    .or_insert_with(|| shift);
+            }
+        }
         for (right_id, right) in bodies.iter().enumerate() {
             if left_id == right_id || left.room != right.room {
                 shifts.entry(left_id).or_default();
@@ -802,7 +830,7 @@ fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) 
 
 pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32) -> Option<bool> {
     let mut next = None;
-    let player_action = player_action(screen, &mut level.player, &mut level.balls, assets);
+    let player_action = player_action(screen, &mut level.player, &mut level.balls, assets, dt);
     level
         .enemies
         .iter_mut()
@@ -845,6 +873,7 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
             .map(|enemy| &mut enemy.body)
             .chain(std::iter::once(&mut level.player.body))
             .collect(),
+        &level.crates,
     );
     if level
         .doors
@@ -867,7 +896,7 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
         .map(|ball| {
             ball.position.0 += ball.velocity.0 * dt;
             for enemy in &mut level.enemies {
-                if ball.room != enemy.body.room {
+                if ball.room != enemy.body.room || enemy.health == Health::Dead {
                     continue;
                 }
                 let diff = ball.position.0 - enemy.body.position.0;
@@ -1088,23 +1117,28 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
         if item_crate.room != level.player.body.room {
             continue;
         }
-        draw_rect(
-            &screen,
-            item_crate.position.0.x - item_crate.form.x_r(),
-            item_crate.position.0.y - item_crate.form.y_r(),
-            2. * item_crate.form.x_r(),
-            2. * item_crate.form.y_r(),
-            GREEN,
+        draw_texture_ex(
+            assets.images["crate"],
+            (item_crate.position.0.x - item_crate.form.x_r()) * screen.height + screen.x,
+            (item_crate.position.0.y - item_crate.form.y_r()) * screen.height + screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(
+                    2. * item_crate.form.x_r() * screen.height,
+                    2. * item_crate.form.y_r() * screen.height,
+                )),
+                ..Default::default()
+            },
         );
         draw_texture_ex(
             assets.images["items"],
-            (item_crate.position.0.x - BALL_RADIUS) * screen.height + screen.x,
-            (item_crate.position.0.y - BALL_RADIUS) * screen.height + screen.y,
+            (item_crate.position.0.x - 1.5 * BALL_RADIUS) * screen.height + screen.x,
+            (item_crate.position.0.y - 1.5 * BALL_RADIUS) * screen.height + screen.y,
             WHITE,
             DrawTextureParams {
                 dest_size: Some(Vec2 {
-                    x: 2. * BALL_RADIUS * screen.height,
-                    y: 2. * BALL_RADIUS * screen.height,
+                    x: 3. * BALL_RADIUS * screen.height,
+                    y: 3. * BALL_RADIUS * screen.height,
                 }),
                 source: Some(item_crate.item.rect()),
                 ..Default::default()
