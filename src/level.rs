@@ -922,50 +922,56 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
     next
 }
 
-fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>) {
-    draw_rect(
-        &screen,
-        0.,
-        0.,
-        RATIO_W_H,
-        1.,
-        if player.health == Health::Full {
-            GRAY
-        } else {
-            RED
-        },
-    );
-    draw_rect(
-        &screen,
-        WALL_SIZE,
-        WALL_SIZE,
-        RATIO_W_H - 2. * WALL_SIZE,
-        1. - 2. * WALL_SIZE,
+fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Assets) {
+    draw_texture_ex(
+        assets.images["level_back"],
+        screen.x,
+        screen.y,
         WHITE,
+        DrawTextureParams {
+            dest_size: Some(Vec2::new(screen.width, screen.height)),
+            ..Default::default()
+        },
     );
     for door in doors {
         if let Some((direction, _)) = door.door_from(&player.body.room) {
-            let color = if door.entrance {
-                GOLD
+            let rect_x = if door.entrance {
+                42.
             } else if door.closed {
-                BROWN
+                21.
             } else {
-                WHITE
+                0.
             };
 
-            let (x, y, w, h) = match direction {
-                Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE),
-                Direction::South => (RATIO_W_H / 2. - 0.15, 1.0 - WALL_SIZE, 0.3, WALL_SIZE),
-                Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, WALL_SIZE, 0.3),
-                Direction::West => (0.0, 0.5 - 0.15, WALL_SIZE, 0.3),
+            let (x, y, w, h, _rotation_multiplier) = match direction {
+                Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE, 3.),
+                Direction::South => (RATIO_W_H / 2. - 0.15, 1.0 - WALL_SIZE, 0.3, WALL_SIZE, 1.),
+                Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, WALL_SIZE, 0.3, 0.),
+                Direction::West => (0.0, 0.5 - 0.15, WALL_SIZE, 0.3, 2.),
             };
-            draw_rect(&screen, x, y, w, h, color);
+            draw_texture_ex(
+                assets.images["doors"],
+                x * screen.height + screen.x,
+                y * screen.height + screen.y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(w * screen.height, h * screen.height)),
+                    source: Some(Rect {
+                        x: rect_x,
+                        y: 0.,
+                        w: 21.,
+                        h: 324.,
+                    }),
+                    // TODO: rotation: rotation_multiplier * FRAC_PI_2,
+                    ..Default::default()
+                },
+            )
         }
     }
 }
 
 pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
-    draw_doors(screen, &level.player, &level.doors);
+    draw_doors(screen, &level.player, &level.doors, assets);
     // Player
     draw_texture_ex(
         assets.images["player"],
@@ -1157,8 +1163,18 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
         }
     }
 
-    // Death screen
-    if level.player.health == Health::Dead {
+    if level.player.health == Health::Low {
+        draw_texture_ex(
+            assets.images["blood"],
+            screen.x,
+            screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(screen.width, screen.height)),
+                ..Default::default()
+            },
+        );
+    } else if level.player.health == Health::Dead {
         draw_rect(
             &screen,
             0.,

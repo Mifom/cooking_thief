@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="63"
+   height="324"
+   viewBox="0 0 63 324"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   sodipodi:docname="doors.svg"
+   inkscape:export-filename="../assets/doors.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showgrid="false"
+     inkscape:zoom="1"
+     inkscape:cx="-28.5"
+     inkscape:cy="151"
+     inkscape:window-width="948"
+     inkscape:window-height="1041"
+     inkscape:window-x="5"
+     inkscape:window-y="32"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:#ffcba8;fill-opacity:1;stroke-width:1.02649"
+       id="rect1053"
+       width="21"
+       height="324"
+       x="0"
+       y="0"
+       ry="0" />
+    <rect
+       style="fill:#ffcc00;fill-opacity:1;stroke-width:1.02649"
+       id="rect1418"
+       width="21"
+       height="324"
+       x="42"
+       y="0"
+       ry="0" />
+    <rect
+       style="fill:#502d16;fill-opacity:1;stroke-width:1.02649"
+       id="rect1420"
+       width="21"
+       height="324"
+       x="21"
+       y="0"
+       ry="0" />
+  </g>
+</svg>
