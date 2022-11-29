@@ -47,26 +47,21 @@ async fn main() {
     }
 }
 pub fn update(state: &mut crate::State, screen: &Screen, assets: &Assets, dt: f32) {
-    let mut next = None;
-    match state {
-        crate::State::Scene(_, scene) => next = update_scene(scene, dt),
-        crate::State::Battle(_, level) => next = update_level(level, screen, assets, dt),
-        crate::State::End => {
-            if is_key_pressed(KeyCode::Q) {
-                next = Some(true);
-            }
-        }
-    }
-    if let Some(next) = next {
-        change_state(state, next, assets);
+    let next = match state {
+        crate::State::Scene(_, scene) => update_scene(scene, dt),
+        crate::State::Battle(_, level) => update_level(level, screen, assets, dt),
+        crate::State::End => is_key_pressed(KeyCode::Q),
+    };
+    if next {
+        change_state(state, assets);
     }
 }
 
-fn change_state(state: &mut crate::State, next: bool, assets: &Assets) {
+fn change_state(state: &mut crate::State, assets: &Assets) {
     let sound = assets.sounds.get("stealth").unwrap();
     stop_sound(sound.clone());
-    *state = match (next, &state) {
-        (true, crate::State::Scene(num, _)) | (false, crate::State::Battle(num, _)) => {
+    *state = match state {
+        crate::State::Scene(num, _) => {
             let config = assets.levels.get(*num).unwrap();
             play_sound(
                 sound.clone(),
@@ -78,10 +73,7 @@ fn change_state(state: &mut crate::State, next: bool, assets: &Assets) {
 
             crate::State::Battle(*num, Level::load(config))
         }
-        (false, crate::State::Scene(num, _)) => {
-            crate::State::Scene(*num, assets.scenes[*num].clone())
-        }
-        (true, crate::State::Battle(num, _)) => {
+        crate::State::Battle(num, _) => {
             let new_num = *num + 1;
             if new_num < SCENES.len() {
                 crate::State::Scene(new_num, assets.scenes[new_num].clone())
@@ -89,13 +81,7 @@ fn change_state(state: &mut crate::State, next: bool, assets: &Assets) {
                 crate::State::End
             }
         }
-        (next, crate::State::End) => {
-            if next {
-                std::process::exit(0)
-            } else {
-                crate::State::End
-            }
-        }
+        crate::State::End => std::process::exit(0),
     };
 }
 

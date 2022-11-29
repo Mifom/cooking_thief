@@ -54,7 +54,7 @@ impl Card {
     }
 }
 
-pub fn update_scene(scene: &mut Scene, dt: f32) -> Option<bool> {
+pub fn update_scene(scene: &mut Scene, dt: f32) -> bool {
     let current = scene.current;
     let card = scene.cards.get_mut(current).unwrap();
     if let crate::scene::State::Printing(letters) = &mut card.state {
@@ -74,13 +74,13 @@ pub fn update_scene(scene: &mut Scene, dt: f32) -> Option<bool> {
 
         if scene.current >= scene.cards.len() {
             scene.current -= 1;
-            return Some(true);
+            return true;
         }
     }
     if is_key_pressed(KeyCode::A) || is_key_pressed(KeyCode::Left) {
         scene.current = scene.current.saturating_sub(1);
     }
-    None
+    false
 }
 
 pub fn draw_scene(scene: &Scene, assets: &Assets, screen: &Screen) {

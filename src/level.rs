@@ -110,6 +110,7 @@ pub enum Item {
     Vegetable { name: String, idx: usize },
 }
 
+#[derive(Clone)]
 pub struct ItemCrate {
     pub item: Item,
     pub position: Position,
@@ -149,15 +150,17 @@ impl Item {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub enum EnemyState {
     Fight(Vec2, Form),
     LastSeen(Vec2, f32),
     #[default]
     Idle,
 }
+#[derive(Clone)]
 pub struct Post(pub Vec2);
 
+#[derive(Clone)]
 pub struct Enemy {
     pub body: Body,
     pub reload: Reload,
@@ -382,6 +385,12 @@ pub fn push_room(
 }
 
 pub struct Level {
+    pub level: LevelInner,
+    backup: LevelInner,
+}
+
+#[derive(Clone)]
+pub struct LevelInner {
     pub player: Player,
     enemies: Vec<Enemy>,
     balls: Vec<Ball>,
@@ -494,12 +503,16 @@ impl Level {
             false,
             true,
         ));
-        Self {
+        let inner = LevelInner {
             player,
             enemies,
             balls: Vec::new(),
             doors,
             crates,
+        };
+        Self {
+            backup: inner.clone(),
+            level: inner,
         }
     }
 }
@@ -814,9 +827,9 @@ fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>) -> bool 
     false
 }
 
-fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) {
+fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) -> bool {
     if item_crate.room.0 != player.body.room.0 {
-        return;
+        return false;
     }
     let diff = item_crate.position.0 - player.body.position.0;
     if is_key_pressed(KeyCode::E)
@@ -825,11 +838,15 @@ fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) 
     {
         (player.item, item_crate.item) = (item_crate.item.clone(), player.item.clone());
         play_sound_once(assets.sounds["item"]);
+        true
+    } else {
+        false
     }
 }
 
-pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32) -> Option<bool> {
-    let mut next = None;
+pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32) -> bool {
+    let Level { level, backup } = level;
+    let mut next = false;
     let player_action = player_action(screen, &mut level.player, &mut level.balls, assets, dt);
     level
         .enemies
@@ -880,7 +897,7 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
         .iter_mut()
         .any(|door| use_door(&mut level.player, door, &level.enemies))
     {
-        next = Some(true);
+        next = true;
     }
     level
         .enemies
@@ -940,13 +957,16 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
             }
         });
 
-    level
+    if level
         .crates
         .iter_mut()
-        .for_each(|item_crate| swap_items(item_crate, &mut level.player, assets));
+        .any(|item_crate| swap_items(item_crate, &mut level.player, assets))
+    {
+        *backup = level.clone();
+    }
 
     if level.player.health == Health::Dead && is_key_pressed(KeyCode::R) {
-        next = Some(false);
+        *level = backup.clone();
     }
     next
 }
@@ -1000,6 +1020,7 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
 }
 
 pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
+    let Level { level, .. } = level;
     draw_doors(screen, &level.player, &level.doors, assets);
     // Player
     draw_texture_ex(

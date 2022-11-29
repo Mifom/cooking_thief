@@ -150,7 +150,7 @@ pub fn draw_centered_txt(screen: &Screen, text: &str, y: f32, font: f32, color: 
 
 pub fn draw_cursor(state: &crate::State, assets: &Assets, screen: &Screen) {
     let cursor = match state {
-        crate::State::Battle(_, level) => &level.player.item,
+        crate::State::Battle(_, level) => &level.level.player.item,
         _ => &Item::Sword,
     };
 
