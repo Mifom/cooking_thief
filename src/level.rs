@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, hash::Hash};
+use std::{cmp::Ordering, collections::HashMap, f32::consts::FRAC_PI_2, hash::Hash};
 
 use macroquad::{audio::play_sound_once, prelude::*, rand::gen_range};
 use serde::Deserialize;
@@ -992,11 +992,11 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
                 0.
             };
 
-            let (x, y, w, h, _rotation_multiplier) = match direction {
-                Direction::North => (RATIO_W_H / 2. - 0.15, 0.0, 0.3, WALL_SIZE, 3.),
-                Direction::South => (RATIO_W_H / 2. - 0.15, 1.0 - WALL_SIZE, 0.3, WALL_SIZE, 1.),
-                Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, WALL_SIZE, 0.3, 0.),
-                Direction::West => (0.0, 0.5 - 0.15, WALL_SIZE, 0.3, 2.),
+            let (x, y, rotation_multiplier) = match direction {
+                Direction::North => (RATIO_W_H / 2., WALL_SIZE / 2. - 0.15, 3.),
+                Direction::South => (RATIO_W_H / 2., 1.0 - WALL_SIZE / 2. - 0.15, 1.),
+                Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, 0.),
+                Direction::West => (0.0, 0.5 - 0.15, 2.),
             };
             draw_texture_ex(
                 assets.images["doors"],
@@ -1004,14 +1004,14 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
                 y * screen.height + screen.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(Vec2::new(w * screen.height, h * screen.height)),
+                    dest_size: Some(Vec2::new(WALL_SIZE * screen.height, 0.3 * screen.height)),
                     source: Some(Rect {
                         x: rect_x,
                         y: 0.,
                         w: 21.,
                         h: 324.,
                     }),
-                    // TODO: rotation: rotation_multiplier * FRAC_PI_2,
+                    rotation: rotation_multiplier * FRAC_PI_2,
                     ..Default::default()
                 },
             )

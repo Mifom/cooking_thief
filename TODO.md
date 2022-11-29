@@ -17,16 +17,16 @@ TODOs for this project:
   - [X] Receipt holder
   - [ ] Text
 - [ ] Graphics
-  - [ ] Environment graphics
-  - [ ] Player/enemies graphics
+  - [X] Environment graphics
+  - [X] Player/enemies graphics
   - [ ] Story pages
   - [ ] Receipt holder
-  - [ ] Animations
+  - [ ] Animations(?)
 - [ ] Audio
   - [ ] Themes
-  - [ ] Sound effects for actions
+  - [X] Sound effects for actions
 - [ ] HUD
-  - [ ] Menu
+  - [ ] Menu(?)
   - [X] Cursor
 - [ ] Bugs
   - [ ] little render glitch on top of the level
