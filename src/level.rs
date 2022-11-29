@@ -203,6 +203,7 @@ pub struct Door {
     pub to: Room,
     pub closed: bool,
     pub entrance: bool,
+    pub playing: f32,
 }
 
 impl Door {
@@ -213,6 +214,7 @@ impl Door {
             to,
             closed,
             entrance,
+            playing: 0.,
         }
     }
     pub fn door_from(&self, from: &Room) -> Option<(Direction, Room)> {
@@ -771,7 +773,7 @@ fn collide(mut bodies: Vec<&mut Body>, crates: &Vec<ItemCrate>) {
     }
 }
 
-fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>) -> bool {
+fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>, assets: &Assets) -> bool {
     if let Some((direction, to)) = door.door_from(&player.body.room) {
         let (x_range, y_range) = match direction {
             Direction::North => (
@@ -802,14 +804,25 @@ fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>) -> bool 
                 } else {
                     return true;
                 }
+                if door.playing == 0. {
+                    door.playing = 1.;
+                    play_sound_once(assets.sounds["door_locked"]);
+                }
                 return false;
             }
             if door.closed && player.item != Item::Key {
+                if door.playing == 0. {
+                    door.playing = 1.;
+                    play_sound_once(assets.sounds["door_locked"]);
+                }
                 player.body.phrase = Some(Phrase {
                     text: "It's locked".to_owned(),
                     time: 1.,
                 });
             } else {
+                if door.closed {
+                    play_sound_once(assets.sounds["door_unlock"]);
+                }
                 door.closed = false;
                 match direction {
                     Direction::North | Direction::South => {
@@ -895,7 +908,11 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
     if level
         .doors
         .iter_mut()
-        .any(|door| use_door(&mut level.player, door, &level.enemies))
+        .map(|door| {
+            door.playing = clamp(door.playing - dt, 0., door.playing);
+            door
+        })
+        .any(|door| use_door(&mut level.player, door, &level.enemies, assets))
     {
         next = true;
     }

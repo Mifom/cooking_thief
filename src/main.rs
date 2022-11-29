@@ -5,7 +5,7 @@ use level::{draw_level, update_level, Level};
 use scene::{draw_scene, update_scene, Scene};
 
 use macroquad::{
-    audio::{play_sound, stop_sound, PlaySoundParams},
+    audio::{play_sound, stop_sound, PlaySoundParams, Sound},
     prelude::*,
 };
 
@@ -30,12 +30,13 @@ async fn main() {
 
     let assets = Assets::load().await;
     let mut state = State::Scene(0, assets.scenes[0].clone());
+    let mut sound = assets.sounds["stealth"];
 
     loop {
         let dt = get_frame_time();
         let screen = get_screen_size(screen_width(), screen_height());
 
-        update(&mut state, &screen, &assets, dt);
+        update(&mut state, &screen, &assets, &mut sound, dt);
 
         draw(&screen, &state, &assets);
         // world.insert_resource(screen);
@@ -46,23 +47,29 @@ async fn main() {
         next_frame().await;
     }
 }
-pub fn update(state: &mut crate::State, screen: &Screen, assets: &Assets, dt: f32) {
+pub fn update(
+    state: &mut crate::State,
+    screen: &Screen,
+    assets: &Assets,
+    sound: &mut Sound,
+    dt: f32,
+) {
     let next = match state {
         crate::State::Scene(_, scene) => update_scene(scene, dt),
         crate::State::Battle(_, level) => update_level(level, screen, assets, dt),
         crate::State::End => is_key_pressed(KeyCode::Q),
     };
     if next {
-        change_state(state, assets);
+        change_state(state, assets, sound);
     }
 }
 
-fn change_state(state: &mut crate::State, assets: &Assets) {
-    let sound = assets.sounds.get("stealth").unwrap();
+fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
     stop_sound(sound.clone());
     *state = match state {
         crate::State::Scene(num, _) => {
             let config = assets.levels.get(*num).unwrap();
+            *sound = assets.sounds["stealth"];
             play_sound(
                 sound.clone(),
                 PlaySoundParams {
