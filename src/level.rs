@@ -622,14 +622,20 @@ fn enemy_action(enemy: &mut Enemy, player: &mut Player, assets: &Assets, dt: f32
         return MoveAction::default();
     }
     let diff = enemy.body.position.0 - player.body.position.0;
-    let player_visible = player.body.room == enemy.body.room
-        && (player.visible
-            || diff.length()
-                < PLAYER_RADIUS + player.body.form.direction_len(diff) + SLASH_LEN / 2.);
+    let touch_distance = if player.health == Health::Full {
+        SLASH_LEN / 2.
+    } else {
+        SLASH_LEN / 6.
+    };
+    let player_visible = player.visible
+        || diff.length()
+            < enemy.body.form.direction_len(diff)
+                + player.body.form.direction_len(diff)
+                + touch_distance;
     let mut phrase = None;
     enemy.state = if player.health == Health::Dead {
         EnemyState::Idle
-    } else if player_visible {
+    } else if player.body.room == enemy.body.room && player_visible {
         if !matches!(enemy.state, EnemyState::Fight(_, _)) {
             phrase = Some(Phrase {
                 text: "Here you are!".to_owned(),
