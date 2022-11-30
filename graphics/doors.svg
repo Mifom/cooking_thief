@@ -27,15 +27,15 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="px"
      showgrid="false"
-     inkscape:zoom="1"
-     inkscape:cx="-28.5"
-     inkscape:cy="151"
-     inkscape:window-width="948"
+     inkscape:zoom="3.8541827"
+     inkscape:cx="-11.545898"
+     inkscape:cy="125.83731"
+     inkscape:window-width="1908"
      inkscape:window-height="1041"
-     inkscape:window-x="965"
+     inkscape:window-x="5"
      inkscape:window-y="32"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g2795" />
   <defs
      id="defs2" />
   <g
@@ -43,7 +43,7 @@
      inkscape:groupmode="layer"
      id="layer1">
     <rect
-       style="fill:#ffdea8;fill-opacity:1;stroke-width:1.02649"
+       style="fill:#ffe6bd;fill-opacity:1;stroke-width:1.02649;fill-rule:nonzero"
        id="rect1053"
        width="21"
        height="324"
@@ -66,5 +66,26 @@
        x="21"
        y="0"
        ry="0" />
+    <g
+       id="g2795">
+      <rect
+         style="fill:#e6e6e6;fill-opacity:1;fill-rule:nonzero;stroke-width:1.23018"
+         id="rect2561"
+         width="15"
+         height="50"
+         x="24"
+         y="137" />
+      <ellipse
+         style="fill:#666666;fill-opacity:1;fill-rule:nonzero;stroke-width:1.40077"
+         id="path2667"
+         cx="31.5"
+         cy="153.10519"
+         rx="5.0534115"
+         ry="4.9667411" />
+      <path
+         style="fill:#666666;fill-opacity:1;fill-rule:nonzero"
+         d="m 31.182542,153.21458 -5.12524,18.55211 10.885396,-0.31016 z"
+         id="path2790" />
+    </g>
   </g>
 </svg>

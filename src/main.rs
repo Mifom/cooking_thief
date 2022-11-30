@@ -39,10 +39,6 @@ async fn main() {
         update(&mut state, &screen, &assets, &mut sound, dt);
 
         draw(&screen, &state, &assets);
-        // world.insert_resource(screen);
-        // world.get_resource_mut::<Time>().unwrap().update(dt);
-
-        // schedule.run(&mut world);
 
         next_frame().await;
     }

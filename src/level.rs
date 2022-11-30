@@ -1016,10 +1016,10 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
             };
 
             let (x, y, rotation_multiplier) = match direction {
-                Direction::North => (RATIO_W_H / 2., WALL_SIZE / 2. - 0.15, 3.),
+                Direction::North => (RATIO_W_H / 2., WALL_SIZE / 2. - 0.15, 1.),
                 Direction::South => (RATIO_W_H / 2., 1.0 - WALL_SIZE / 2. - 0.15, 1.),
                 Direction::East => (RATIO_W_H - WALL_SIZE, 0.5 - 0.15, 0.),
-                Direction::West => (0.0, 0.5 - 0.15, 2.),
+                Direction::West => (0.0, 0.5 - 0.15, 0.),
             };
             draw_texture_ex(
                 assets.images["doors"],
@@ -1031,7 +1031,7 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
                     source: Some(Rect {
                         x: rect_x,
                         y: 0.,
-                        w: 21.,
+                        w: 20.,
                         h: 324.,
                     }),
                     rotation: rotation_multiplier * FRAC_PI_2,
