@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::{
     assets::Assets,
-    graphics::{draw_centered_txt, draw_circ, draw_rect, draw_txt, get_lines, Screen},
+    graphics::{draw_centered_txt, draw_rect, draw_txt, get_lines, Screen},
     RATIO_W_H,
 };
 
@@ -107,7 +107,11 @@ pub struct Player {
 pub enum Item {
     Sword,
     Key,
-    Vegetable { name: String, idx: usize },
+    Vegetable {
+        name: String,
+        idx: usize,
+        color: (u8, u8, u8, u8),
+    },
 }
 
 #[derive(Clone)]
@@ -167,6 +171,7 @@ pub struct Enemy {
     pub state: EnemyState,
     pub post: Post,
     pub health: Health,
+    pub death_by: Option<Item>,
 }
 
 #[derive(Clone)]
@@ -355,6 +360,7 @@ pub fn push_room(
                     state: EnemyState::Idle,
                     post: Post(position),
                     health: Health::Low,
+                    death_by: None,
                 }
             })
             .collect(),
@@ -942,6 +948,9 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
                 let diff = ball.position.0 - enemy.body.position.0;
                 if diff.length() < BALL_RADIUS + enemy.body.form.direction_len(diff) {
                     enemy.health.decrease();
+                    if enemy.health == Health::Dead {
+                        enemy.death_by = Some(ball.item.clone());
+                    }
                     return None;
                 }
             }
@@ -1145,13 +1154,29 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                 ..Default::default()
             },
         );
-        if enemy.health == Health::Dead {
-            draw_circ(
-                &screen,
-                enemy.body.position.0.x,
-                enemy.body.position.0.y,
-                PLAYER_RADIUS / 2.,
-                RED,
+        if let Some(Item::Vegetable {
+            color: (r, g, b, a),
+            ..
+        }) = enemy.death_by
+        {
+            draw_texture_ex(
+                assets.images["enemy"],
+                (enemy.body.position.0.x - enemy.body.form.x_r() / 3.) * screen.height + screen.x,
+                (enemy.body.position.0.y - enemy.body.form.y_r()) * screen.height + screen.y,
+                Color::from_rgba(r, g, b, a),
+                DrawTextureParams {
+                    source: Some(Rect {
+                        x: 10.,
+                        y: 190.,
+                        w: 50.,
+                        h: 40.,
+                    }),
+                    dest_size: Some(Vec2::new(
+                        enemy.body.form.x_r() * 0.6 * screen.height,
+                        enemy.body.form.y_r() * screen.height,
+                    )),
+                    ..Default::default()
+                },
             );
         }
     }

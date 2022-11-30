@@ -30,4 +30,5 @@ rooms:
     - !Vegetable
       name: onion
       idx: 1
+      color: [200, 113, 55, 128]
 

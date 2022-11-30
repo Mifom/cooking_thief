@@ -22,3 +22,4 @@ rooms:
     - !Vegetable
       name: tomato
       idx: 0
+      color: [212, 0, 0, 128]
