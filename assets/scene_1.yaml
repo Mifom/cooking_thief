@@ -9,19 +9,23 @@ cards:
 - image: fore
   text: As I see you a thief... Well...
 - image: fore
-  text: Then we should rob this warehouse
+  text: Then you should rob this warehouse
 - image: fore
   text: In order to do that you should kill... or knock down every guard in it 
 - image: fore
-  text: Do you have weapon?
+  text: I know thiefs can be wasd or arrow users
 - image: fore
-  text: ...
+  text: But I never understand what does this mean...
 - image: fore
-  text: No?...
+  text: I've heard you using space to swap between stealthy and normal
 - image: fore
-  text: I suppose it's no...
+  text: Also I've heard that you need a mouse in order to attack
 - image: fore
-  text: Well... I'll give you this Sword of Great Disaster, use it to kill all of the guards
+  text: I only have a rat...
+- image: fore
+  text: But it's mine and I won't give it to you
+- image: fore
+  text: Instead I'll give you this Sword of Great Disaster, use it to kill all of the guards
 - image: fore
   text: But please
 - image: fore
