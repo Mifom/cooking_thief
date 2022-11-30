@@ -29,4 +29,5 @@ TODOs for this project:
   - [ ] Menu(?)
   - [X] Cursor
 - [ ] Bugs
-  - [ ] little render glitch on top of the level
+  - [ ] Little render glitch on top of the level
+  - [X] Phrase drawn in bad place

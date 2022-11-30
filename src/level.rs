@@ -1220,21 +1220,31 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                 };
 
         let (lines, max_len) = get_lines(&screen, 8. * PLAYER_RADIUS, 0.04, &phrase.text);
+        let start_x = clamp(
+            body.position.0.x,
+            body.position.0.x,
+            RATIO_W_H - WALL_SIZE - 0.04 - max_len,
+        );
         let start = body.position.0.y - (lines.len() as f32 * 0.02) - body.form.y_r() - 0.02;
+        let start_y = clamp(
+            start,
+            0.0,
+            1.0 - WALL_SIZE - 0.04 - lines.len() as f32 * 0.02,
+        );
         draw_rect(
             &screen,
-            body.position.0.x,
-            start - 0.02,
+            start_x,
+            start_y,
             0.04 + max_len,
             lines.len() as f32 * 0.02 + 0.04,
-            BLACK,
+            Color::from_rgba(0, 0, 0, 128),
         );
         for (n, line) in lines.into_iter().enumerate() {
             draw_txt(
                 &screen,
                 line,
-                body.position.0.x + 0.02,
-                start + (0.02 * (n + 1) as f32),
+                start_x + 0.02,
+                start_y + (0.02 * (n + 2) as f32),
                 0.04,
                 WHITE,
             );
