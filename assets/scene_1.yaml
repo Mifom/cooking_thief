@@ -1,35 +1,35 @@
 background: back
 cards:
-- image: fore
+- image: holder_smile
   text: Hey you!
-- image: fore
+- image: holder_mouth_closed
   text: You was chosen by the roll of dice to cook the potato soup
-- image: fore
+- image: holder_smile
   text: I'll explain details later, for now you only need to get some tomatoes
-- image: fore
+- image: holder_mouth_open
   text: As I see you a thief... Well...
-- image: fore
+- image: holder_mouth_closed
   text: Then you should rob this warehouse
-- image: fore
+- image: holder_mouth_open
   text: In order to do that you should kill... or knock down every guard in it 
-- image: fore
+- image: holder_smile
   text: I know thiefs can be wasd or arrow users
-- image: fore
+- image: holder_disappointed
   text: But I never understand what does this mean...
-- image: fore
+- image: holder_mouth_open
   text: I've heard you using space to swap between stealthy and normal
-- image: fore
+- image: holder_mouth_closed
   text: Also I've heard that you need a mouse in order to attack
-- image: fore
+- image: holder_mouth_open
   text: I only have a rat...
-- image: fore
+- image: holder_smile
   text: But it's mine and I won't give it to you
-- image: fore
+- image: holder_mouth_open
   text: Instead I'll give you this Sword of Great Disaster, use it to kill all of the guards
-- image: fore
+- image: holder_mouth_closed
   text: But please
-- image: fore
+- image: holder_mouth_open
   text: Don't lose it
-- image: fore
+- image: holder_smile
   text: Good luck!
 

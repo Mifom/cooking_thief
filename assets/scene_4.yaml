@@ -1,16 +1,16 @@
 background: back
 cards:
-- image: fore
+- image: holder_mouth_closed
   text: Hi you
-- image: fore
+- image: holder_mouth_open
   text: Well...
-- image: fore
+- image: holder_mouth_closed
   text: We have little time now
-- image: fore
+- image: holder_mouth_open
   text: You should go to this carroty warehouse and get last ingredient
-- image: fore
+- image: holder_mouth_closed
   text: ...
-- image: fore
+- image: holder_disappointed
   text: Carrot I mean
-- image: fore
+- image: holder_smile
   text: Be quick please

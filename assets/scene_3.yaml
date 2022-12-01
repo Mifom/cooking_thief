@@ -1,24 +1,24 @@
 background: back
 cards:
-- image: fore
+- image: holder_smile
   text: Hi you
-- image: fore
+- image: holder_mouth_open
   text: As you're doing a great job I want to share with you our mission
-- image: fore
+- image: holder_mouth_closed
   text: You will cook the potato soup for our...
-- image: fore
+- image: holder_smile
   text: Not so known inventor, Apocalypse the Gnome
-- image: fore
+- image: holder_mouth_closed
   text: He discovered something that he describes as
-- image: fore
+- image: holder_mouth_open
   text: An explosive device that derives its destructive force from nuclear reactions, either fission... and...
-- image: fore
+- image: holder_disappointed
   text: Well... Forget...
-- image: fore
+- image: holder_mouth_open
   text: We called it "Big Fissing Bomb"
-- image: fore
+- image: holder_disappointed
   text: So with it he can explode our kingdom
-- image: fore
+- image: holder_mouth_open
   text: So if we succeed you'll become a hero of our kingdom
-- image: fore
+- image: holder_mouth_closed
   text: So rob this potato warehouse for the great future of our kingdom!

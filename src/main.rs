@@ -30,7 +30,14 @@ async fn main() {
 
     let assets = Assets::load().await;
     let mut state = State::Scene(0, assets.scenes[0].clone());
-    let mut sound = assets.sounds["stealth"];
+    let mut sound = assets.sounds["village"];
+    play_sound(
+        sound.clone(),
+        PlaySoundParams {
+            looped: true,
+            volume: 0.75,
+        },
+    );
 
     loop {
         let dt = get_frame_time();
@@ -70,7 +77,7 @@ fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
                 sound.clone(),
                 PlaySoundParams {
                     looped: true,
-                    volume: 1.,
+                    volume: 0.75,
                 },
             );
 
@@ -79,6 +86,14 @@ fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
         crate::State::Battle(num, _) => {
             let new_num = *num + 1;
             if new_num < SCENES.len() {
+                *sound = assets.sounds["village"];
+                play_sound(
+                    sound.clone(),
+                    PlaySoundParams {
+                        looped: true,
+                        volume: 0.75,
+                    },
+                );
                 crate::State::Scene(new_num, assets.scenes[new_num].clone())
             } else {
                 crate::State::End

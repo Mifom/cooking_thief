@@ -7,16 +7,28 @@ use macroquad::{
 
 use crate::{level::LevelConfig, scene::Scene};
 
-const IMAGES: [(&str, &[u8]); 9] = [
+const IMAGES: [(&str, &[u8]); 12] = [
     ("player", include_bytes!("../assets/player.png")),
     ("enemy", include_bytes!("../assets/enemy.png")),
     ("back", include_bytes!("../assets/back.png")),
     ("items", include_bytes!("../assets/items.png")),
-    ("fore", include_bytes!("../assets/fore.png")),
     ("level_back", include_bytes!("../assets/level_back.png")),
     ("doors", include_bytes!("../assets/doors.png")),
     ("blood", include_bytes!("../assets/blood.png")),
     ("crate", include_bytes!("../assets/crate.png")),
+    (
+        "holder_mouth_closed",
+        include_bytes!("../assets/holder_mouth_closed.png"),
+    ),
+    (
+        "holder_mouth_open",
+        include_bytes!("../assets/holder_mouth_open.png"),
+    ),
+    ("holder_smile", include_bytes!("../assets/holder_smile.png")),
+    (
+        "holder_disappointed",
+        include_bytes!("../assets/holder_disappointed.png"),
+    ),
 ];
 
 const LEVELS: [&str; 4] = [
@@ -33,8 +45,9 @@ pub const SCENES: [&str; 4] = [
     include_str!("../assets/scene_4.yaml"),
 ];
 
-const SOUNDS: [(&str, &[u8]); 7] = [
+const SOUNDS: [(&str, &[u8]); 8] = [
     ("stealth", include_bytes!("../assets/Stealth.ogg")),
+    ("village", include_bytes!("../assets/village.ogg")),
     ("sword", include_bytes!("../assets/sword.wav")),
     ("door_unlock", include_bytes!("../assets/door_unlock.wav")),
     ("door_locked", include_bytes!("../assets/door_locked.wav")),
