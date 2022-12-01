@@ -171,7 +171,7 @@ pub struct Enemy {
     pub state: EnemyState,
     pub post: Post,
     pub health: Health,
-    pub death_by: Option<Item>,
+    pub stain: Option<Color>,
 }
 
 #[derive(Clone)]
@@ -290,6 +290,15 @@ impl Form {
         }
     }
 }
+
+#[derive(Clone)]
+struct Stain {
+    color: Color,
+    position: Position,
+    room: Room,
+    direction: Direction,
+}
+
 #[derive(Deserialize, Clone)]
 pub struct LevelConfig {
     pub rooms: Vec<RoomConfig>,
@@ -360,7 +369,7 @@ pub fn push_room(
                     state: EnemyState::Idle,
                     post: Post(position),
                     health: Health::Low,
-                    death_by: None,
+                    stain: None,
                 }
             })
             .collect(),
@@ -404,6 +413,7 @@ pub struct LevelInner {
     balls: Vec<Ball>,
     doors: Vec<Door>,
     crates: Vec<ItemCrate>,
+    stains: Vec<Stain>,
 }
 
 impl Level {
@@ -515,6 +525,7 @@ impl Level {
             player,
             enemies,
             balls: Vec::new(),
+            stains: Vec::new(),
             doors,
             crates,
         };
@@ -949,7 +960,10 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
                 if diff.length() < BALL_RADIUS + enemy.body.form.direction_len(diff) {
                     enemy.health.decrease();
                     if enemy.health == Health::Dead {
-                        enemy.death_by = Some(ball.item.clone());
+                        let Item::Vegetable { color: (r, g, b, a), .. } = ball.item else {
+                            unreachable!()
+                        };
+                        enemy.stain = Some(Color::from_rgba(r, g, b, a));
                     }
                     return None;
                 }
@@ -959,6 +973,32 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
                 || ball.position.0.y < WALL_SIZE + BALL_RADIUS
                 || ball.position.0.y > 1. - WALL_SIZE - BALL_RADIUS
             {
+                let Item::Vegetable{color: (r, g, b, a), ..} = ball.item else {
+                    unreachable!()
+                };
+                let (position, direction) = if ball.position.0.x < WALL_SIZE + BALL_RADIUS {
+                    (Position(Vec2::new(0., ball.position.0.y)), Direction::West)
+                } else if ball.position.0.x > RATIO_W_H - WALL_SIZE - BALL_RADIUS {
+                    (
+                        Position(Vec2::new(RATIO_W_H - 4. * BALL_RADIUS, ball.position.0.y)),
+                        Direction::East,
+                    )
+                } else if ball.position.0.y < WALL_SIZE + BALL_RADIUS {
+                    (Position(Vec2::new(ball.position.0.x, 0.)), Direction::North)
+                } else
+                /* ball.position.0.y > 1. - WALL_SIZE - BALL_RADIUS*/
+                {
+                    (
+                        Position(Vec2::new(ball.position.0.x, 1. - 4. * BALL_RADIUS)),
+                        Direction::South,
+                    )
+                };
+                level.stains.push(Stain {
+                    color: Color::from_rgba(r, g, b, a),
+                    position,
+                    room: ball.room,
+                    direction,
+                });
                 return None;
             }
 
@@ -1113,6 +1153,39 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
         );
     }
 
+    // Stains
+    for stain in &level.stains {
+        if stain.room != level.player.body.room {
+            continue;
+        }
+        let rotation = match stain.direction {
+            Direction::West => 2.,
+            Direction::North => 3.,
+            Direction::East => 0.,
+            Direction::South => 1.,
+        };
+        draw_texture_ex(
+            assets.images["items"],
+            stain.position.0.x * screen.height + screen.x,
+            stain.position.0.y * screen.height + screen.y,
+            stain.color,
+            DrawTextureParams {
+                source: Some(Rect {
+                    x: 10.,
+                    y: 220.,
+                    w: 100.,
+                    h: 130.,
+                }),
+                dest_size: Some(Vec2::new(
+                    4. * BALL_RADIUS * screen.height,
+                    4. * BALL_RADIUS * screen.height,
+                )),
+                rotation: FRAC_PI_2 * rotation,
+                ..Default::default()
+            },
+        );
+    }
+
     // Enemies
     for enemy in &level.enemies {
         if enemy.body.room != level.player.body.room {
@@ -1154,16 +1227,12 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                 ..Default::default()
             },
         );
-        if let Some(Item::Vegetable {
-            color: (r, g, b, a),
-            ..
-        }) = enemy.death_by
-        {
+        if let Some(color) = enemy.stain {
             draw_texture_ex(
                 assets.images["enemy"],
                 (enemy.body.position.0.x - enemy.body.form.x_r() / 3.) * screen.height + screen.x,
                 (enemy.body.position.0.y - enemy.body.form.y_r()) * screen.height + screen.y,
-                Color::from_rgba(r, g, b, a),
+                color,
                 DrawTextureParams {
                     source: Some(Rect {
                         x: 10.,
