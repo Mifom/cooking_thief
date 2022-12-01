@@ -96,7 +96,9 @@ pub fn draw(screen: &Screen, state: &crate::State, assets: &Assets) {
         crate::State::Battle(_, level) => draw_level(level, assets, screen),
         crate::State::End => {
             draw_rect(screen, 0., 0., RATIO_W_H, 1., BLACK);
-            draw_centered_txt(screen, "That was hard. Press Q to quit.", 0.4, 0.08, WHITE);
+            for (n, line) in assets.end.lines().enumerate() {
+                draw_centered_txt(screen, line, 0.08 * (n + 1) as f32, 0.045, WHITE);
+            }
         }
     }
 

@@ -41,11 +41,14 @@ const SOUNDS: [(&str, &[u8]); 7] = [
     ("item", include_bytes!("../assets/item.ogg")),
 ];
 
+const END: &str = include_str!("../assets/end.txt");
+
 pub struct Assets {
     pub images: HashMap<String, Texture2D>,
     pub levels: Vec<LevelConfig>,
     pub scenes: Vec<Scene>,
     pub sounds: HashMap<String, Sound>,
+    pub end: String,
 }
 
 impl Assets {
@@ -80,6 +83,7 @@ impl Assets {
             levels,
             scenes,
             sounds,
+            end: END.to_owned(),
         }
     }
 }

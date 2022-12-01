@@ -1,34 +1,27 @@
 rooms:
 - id: 0
-  enter: North
-  enemies: 0
+  enter: South
+  enemies: 1
   doors:
-  - direction: West
+  - direction: North
     to: 1
   - direction: East
-    to: 3
+    to: 2
+  - direction: West
+    to: 4
 - id: 1
   enemies: 2
   doors:
-  - direction: West
-    to: 2
+  - direction: East
+    to: 3
+    closed: true
 - id: 2
   enemies: 2
   doors:
-  items:
-  - !Key
-- id: 3
-  enemies: 3
-  doors:
-  - direction: East
-    to: 4
-- id: 4
-  enemies: 2
-  doors:
-  - direction: East
-    to: 5
+  - direction: North
+    to: 3
     closed: true
-- id: 5
+- id: 3
   enemies: 1
   doors:
   items:
@@ -36,3 +29,8 @@ rooms:
     name: potato
     idx: 2
     color: [170, 136, 0, 128]
+- id: 4
+  enemies: 3
+  doors:
+  items:
+  - !Key
