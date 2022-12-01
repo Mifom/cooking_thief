@@ -459,11 +459,11 @@ impl Level {
         let randomed = gen_range(0.35, 0.65);
         let position = match enter {
             Direction::North => Vec2 {
-                x: randomed,
+                x: randomed + (RATIO_W_H - 1.) / 2.,
                 y: 0.1,
             },
             Direction::South => Vec2 {
-                x: randomed,
+                x: randomed + (RATIO_W_H - 1.) / 2.,
                 y: 0.9,
             },
             Direction::West => Vec2 {
@@ -1174,7 +1174,7 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                     x: 10.,
                     y: 220.,
                     w: 100.,
-                    h: 130.,
+                    h: 100.,
                 }),
                 dest_size: Some(Vec2::new(
                     4. * BALL_RADIUS * screen.height,

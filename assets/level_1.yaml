@@ -1,25 +1,25 @@
 rooms:
-  - id: 0
-    enter: West
-    enemies: 2
-    doors:
-    - direction: East
-      to: 1
-  - id: 1
-    enemies: 2
-    doors:
-    - direction: East
-      to: 2
-  - id: 2
-    enemies: 2
-    doors:
-    - direction: South
-      to: 3
-  - id: 3
-    enemies: 1
-    doors:
-    items:
-    - !Vegetable
-      name: tomato
-      idx: 0
-      color: [212, 0, 0, 128]
+- id: 0
+  enter: West
+  enemies: 2
+  doors:
+  - direction: East
+    to: 1
+- id: 1
+  enemies: 2
+  doors:
+  - direction: East
+    to: 2
+- id: 2
+  enemies: 2
+  doors:
+  - direction: South
+    to: 3
+- id: 3
+  enemies: 1
+  doors:
+  items:
+  - !Vegetable
+    name: tomato
+    idx: 0
+    color: [212, 0, 0, 128]

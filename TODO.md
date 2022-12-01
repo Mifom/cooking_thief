@@ -19,8 +19,8 @@ TODOs for this project:
 - [ ] Graphics
   - [X] Environment graphics
   - [X] Player/enemies graphics
-  - [ ] Story pages
-  - [ ] Receipt holder
+  - [X] Story pages
+  - [X] Receipt holder
   - [ ] Animations(?)
 - [ ] Audio
   - [ ] Themes
@@ -28,6 +28,6 @@ TODOs for this project:
 - [ ] HUD
   - [ ] Menu(?)
   - [X] Cursor
-- [ ] Bugs
-  - [ ] Little render glitch on top of the level
+- [X] Bugs
+  - [X] Little render glitch on top of the level
   - [X] Phrase drawn in bad place
