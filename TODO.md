@@ -12,10 +12,10 @@ TODOs for this project:
   - [X] Basic movement
   - [X] State machine to find hidden player
   - [ ] Search in open door with key(?)
-- [ ] Story
+- [X] Story
   - [X] Main plot
   - [X] Receipt holder
-  - [ ] Text
+  - [X] Text
 - [ ] Graphics
   - [X] Environment graphics
   - [X] Player/enemies graphics

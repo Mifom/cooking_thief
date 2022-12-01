@@ -19,16 +19,18 @@ const IMAGES: [(&str, &[u8]); 9] = [
     ("crate", include_bytes!("../assets/crate.png")),
 ];
 
-const LEVELS: [&str; 3] = [
+const LEVELS: [&str; 4] = [
     include_str!("../assets/level_1.yaml"),
     include_str!("../assets/level_2.yaml"),
     include_str!("../assets/level_3.yaml"),
+    include_str!("../assets/level_4.yaml"),
 ];
 
-pub const SCENES: [&str; 3] = [
+pub const SCENES: [&str; 4] = [
     include_str!("../assets/scene_1.yaml"),
     include_str!("../assets/scene_2.yaml"),
     include_str!("../assets/scene_3.yaml"),
+    include_str!("../assets/scene_4.yaml"),
 ];
 
 const SOUNDS: [(&str, &[u8]); 7] = [

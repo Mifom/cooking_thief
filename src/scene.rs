@@ -64,6 +64,7 @@ pub fn update_scene(scene: &mut Scene, dt: f32) -> bool {
         }
     }
     let forward = is_key_pressed(KeyCode::Space)
+        || is_key_pressed(KeyCode::Enter)
         || is_key_pressed(KeyCode::D)
         || is_key_pressed(KeyCode::Right)
         || is_mouse_button_pressed(MouseButton::Left);
