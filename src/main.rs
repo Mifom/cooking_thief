@@ -21,7 +21,7 @@ pub const RATIO_W_H: f32 = 16. / 9.;
 pub enum State {
     Scene(usize, Scene),
     Battle(usize, Level),
-    End,
+    End(usize),
 }
 
 #[macroquad::main("Cooking thief")]
@@ -29,8 +29,10 @@ async fn main() {
     show_mouse(false);
 
     let assets = Assets::load().await;
-    let mut state = State::Scene(0, assets.scenes[0].clone());
-    let mut sound = assets.sounds["village"];
+    // let mut state = State::Scene(0, assets.scenes[0].clone());
+    // let mut sound = assets.sounds["village"];
+    let mut state = State::End(0);
+    let mut sound = assets.sounds["thief_at_the_kitchen"];
     play_sound(
         sound.clone(),
         PlaySoundParams {
@@ -60,7 +62,19 @@ pub fn update(
     let next = match state {
         crate::State::Scene(_, scene) => update_scene(scene, dt),
         crate::State::Battle(_, level) => update_level(level, screen, assets, dt),
-        crate::State::End => is_key_pressed(KeyCode::Q),
+        crate::State::End(pos) => {
+            let forward = is_key_pressed(KeyCode::Space)
+                || is_key_pressed(KeyCode::Enter)
+                || is_key_pressed(KeyCode::D)
+                || is_key_pressed(KeyCode::Right)
+                || is_mouse_button_pressed(MouseButton::Left);
+            if forward {
+                *pos += 1;
+                *pos >= assets.end.len()
+            } else {
+                false
+            }
+        }
     };
     if next {
         change_state(state, assets, sound);
@@ -83,10 +97,10 @@ fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
                 crate::State::Scene(new_num, assets.scenes[new_num].clone())
             } else {
                 *sound = assets.sounds["thief_at_the_kitchen"];
-                crate::State::End
+                crate::State::End(0)
             }
         }
-        crate::State::End => std::process::exit(0),
+        crate::State::End(_) => std::process::exit(0),
     };
     play_sound(
         sound.clone(),
@@ -103,10 +117,11 @@ pub fn draw(screen: &Screen, state: &crate::State, assets: &Assets) {
     match state {
         crate::State::Scene(_, scene) => draw_scene(scene, assets, screen),
         crate::State::Battle(_, level) => draw_level(level, assets, screen),
-        crate::State::End => {
+        crate::State::End(pos) => {
             draw_rect(screen, 0., 0., RATIO_W_H, 1., BLACK);
-            for (n, line) in assets.end.lines().enumerate() {
-                draw_centered_txt(screen, line, 0.08 * (n + 1) as f32, 0.045, WHITE);
+            let start = 0.5 - 0.04 * assets.end[*pos].len() as f32;
+            for (n, line) in assets.end[*pos].iter().enumerate() {
+                draw_centered_txt(screen, line, start + 0.08 * (n + 1) as f32, 0.045, WHITE);
             }
         }
     }

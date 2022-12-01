@@ -22,8 +22,9 @@ TODOs for this project:
   - [X] Story pages
   - [X] Receipt holder
   - [ ] Animations(?)
-- [ ] Audio
-  - [ ] Themes
+  - [X] End
+- [X] Audio
+  - [X] Themes
   - [X] Sound effects for actions
 - [ ] HUD
   - [ ] Menu(?)

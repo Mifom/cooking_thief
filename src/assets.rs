@@ -67,7 +67,7 @@ pub struct Assets {
     pub levels: Vec<LevelConfig>,
     pub scenes: Vec<Scene>,
     pub sounds: HashMap<String, Sound>,
-    pub end: String,
+    pub end: Vec<Vec<String>>,
 }
 
 impl Assets {
@@ -96,13 +96,21 @@ impl Assets {
             .into_iter()
             .map(|scene| serde_yaml::from_str(scene).unwrap())
             .collect();
+        let mut end = vec![vec![]];
+        for line in END.lines() {
+            if line == "..." {
+                end.push(vec![]);
+            } else {
+                end.last_mut().map(|last| last.push(line.to_owned()));
+            }
+        }
 
         Self {
             images,
             levels,
             scenes,
             sounds,
-            end: END.to_owned(),
+            end,
         }
     }
 }
