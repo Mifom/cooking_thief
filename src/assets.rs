@@ -45,8 +45,12 @@ pub const SCENES: [&str; 4] = [
     include_str!("../assets/scene_4.yaml"),
 ];
 
-const SOUNDS: [(&str, &[u8]); 8] = [
+const SOUNDS: [(&str, &[u8]); 9] = [
     ("stealth", include_bytes!("../assets/Stealth.ogg")),
+    (
+        "thief_at_the_kitchen",
+        include_bytes!("../assets/Thief_at_the_kitchen.ogg"),
+    ),
     ("village", include_bytes!("../assets/village.ogg")),
     ("sword", include_bytes!("../assets/sword.wav")),
     ("door_unlock", include_bytes!("../assets/door_unlock.wav")),

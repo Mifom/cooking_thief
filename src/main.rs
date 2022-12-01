@@ -73,13 +73,6 @@ fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
         crate::State::Scene(num, _) => {
             let config = assets.levels.get(*num).unwrap();
             *sound = assets.sounds["stealth"];
-            play_sound(
-                sound.clone(),
-                PlaySoundParams {
-                    looped: true,
-                    volume: 0.75,
-                },
-            );
 
             crate::State::Battle(*num, Level::load(config))
         }
@@ -87,20 +80,21 @@ fn change_state(state: &mut crate::State, assets: &Assets, sound: &mut Sound) {
             let new_num = *num + 1;
             if new_num < SCENES.len() {
                 *sound = assets.sounds["village"];
-                play_sound(
-                    sound.clone(),
-                    PlaySoundParams {
-                        looped: true,
-                        volume: 0.75,
-                    },
-                );
                 crate::State::Scene(new_num, assets.scenes[new_num].clone())
             } else {
+                *sound = assets.sounds["thief_at_the_kitchen"];
                 crate::State::End
             }
         }
         crate::State::End => std::process::exit(0),
     };
+    play_sound(
+        sound.clone(),
+        PlaySoundParams {
+            looped: true,
+            volume: 0.75,
+        },
+    );
 }
 
 pub fn draw(screen: &Screen, state: &crate::State, assets: &Assets) {
