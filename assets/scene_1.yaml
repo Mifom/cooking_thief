@@ -20,7 +20,7 @@ cards:
   text: I've heard you using space to swap between stealthy and normal
 - image: holder_mouth_closed
   text: Also I've heard that you need a mouse in order to attack
-- image: holder_mouth_open
+- image: holder_with_rat
   text: I only have a rat...
 - image: holder_smile
   text: But it's mine and I won't give it to you
