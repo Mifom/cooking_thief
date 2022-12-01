@@ -8,26 +8,24 @@ TODOs for this project:
 - [X] Story mode
   - [X] Basic view of story(LN style)
   - [X] load from .yaml
-- [ ] AI
+- [X] AI
   - [X] Basic movement
   - [X] State machine to find hidden player
-  - [ ] Search in open door with key(?)
 - [X] Story
   - [X] Main plot
   - [X] Receipt holder
   - [X] Text
-- [ ] Graphics
+- [X] Graphics
   - [X] Environment graphics
   - [X] Player/enemies graphics
   - [X] Story pages
   - [X] Receipt holder
-  - [ ] Animations(?)
+  - [X] Animations
   - [X] End
 - [X] Audio
   - [X] Themes
   - [X] Sound effects for actions
-- [ ] HUD
-  - [ ] Menu(?)
+- [X] HUD
   - [X] Cursor
 - [X] Bugs
   - [X] Little render glitch on top of the level

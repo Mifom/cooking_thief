@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::HashMap, f32::consts::FRAC_PI_2, hash::Hash};
+use std::{
+    cmp::Ordering,
+    collections::HashMap,
+    f32::consts::{FRAC_PI_2, FRAC_PI_3},
+    hash::Hash,
+};
 
 use macroquad::{audio::play_sound_once, prelude::*, rand::gen_range};
 use serde::Deserialize;
@@ -1090,29 +1095,26 @@ fn draw_doors(screen: &Screen, player: &Player, doors: &Vec<Door>, assets: &Asse
         }
     }
 }
-
-pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
-    let Level { level, .. } = level;
-    draw_doors(screen, &level.player, &level.doors, assets);
+fn draw_player(player: &Player, assets: &Assets, screen: &Screen) {
     // Player
     draw_texture_ex(
         assets.images["player"],
-        (level.player.body.position.0.x - level.player.body.form.x_r()) * screen.height + screen.x,
-        (level.player.body.position.0.y - level.player.body.form.y_r()) * screen.height + screen.y,
+        (player.body.position.0.x - player.body.form.x_r()) * screen.height + screen.x,
+        (player.body.position.0.y - player.body.form.y_r()) * screen.height + screen.y,
         WHITE,
         DrawTextureParams {
             dest_size: Some(Vec2 {
-                x: 2. * level.player.body.form.x_r() * screen.height,
-                y: 2. * level.player.body.form.y_r() * screen.height,
+                x: 2. * player.body.form.x_r() * screen.height,
+                y: 2. * player.body.form.y_r() * screen.height,
             }),
-            source: Some(if level.player.health == Health::Dead {
+            source: Some(if player.health == Health::Dead {
                 Rect {
                     x: 280.,
                     y: 10.,
                     w: 150.,
                     h: 90.,
                 }
-            } else if level.player.visible {
+            } else if player.visible {
                 Rect {
                     x: 10.,
                     y: 10.,
@@ -1127,11 +1129,54 @@ pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
                     h: 150.,
                 }
             }),
-            flip_x: level.player.body.sight.0.x < 0.,
+            flip_x: player.body.sight.0.x < 0.,
             ..Default::default()
         },
     );
+    // Arm
+    if player.health != Health::Dead && player.visible {
+        let x = if player.body.sight.0.x < 0. {
+            0.4 * player.body.form.x_r()
+        } else {
+            -player.body.form.x_r()
+        } + player.body.position.0.x;
+        let y = player.body.position.0.y - 0.2 * player.body.form.y_r();
+        draw_texture_ex(
+            assets.images["player"],
+            x * screen.height + screen.x,
+            y * screen.height + screen.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2 {
+                    x: 0.6 * player.body.form.x_r() * screen.height,
+                    y: 0.8 * player.body.form.y_r() * screen.height,
+                }),
+                source: Some(Rect {
+                    x: 10.,
+                    y: 170.,
+                    w: 30.,
+                    h: 65.,
+                }),
+                // flip_x:  < 0.,
+                pivot: Some(Vec2::new(
+                    (x + 0.3 * player.body.form.x_r()) * screen.height + screen.x,
+                    (y + 0.2 * player.body.form.y_r()) * screen.height + screen.y,
+                )),
+                rotation: player.reload.0 / PLAYER_RELOAD
+                    * FRAC_PI_3
+                    * 2.
+                    * (-player.body.sight.0.x.signum()),
+                ..Default::default()
+            },
+        );
+    }
+}
 
+pub fn draw_level(level: &Level, assets: &Assets, screen: &Screen) {
+    let Level { level, .. } = level;
+    draw_doors(screen, &level.player, &level.doors, assets);
+
+    draw_player(&level.player, assets, screen);
     // Balls
     for ball in &level.balls {
         if ball.room != level.player.body.room {

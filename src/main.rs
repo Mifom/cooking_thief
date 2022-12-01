@@ -29,10 +29,8 @@ async fn main() {
     show_mouse(false);
 
     let assets = Assets::load().await;
-    // let mut state = State::Scene(0, assets.scenes[0].clone());
-    // let mut sound = assets.sounds["village"];
-    let mut state = State::End(0);
-    let mut sound = assets.sounds["thief_at_the_kitchen"];
+    let mut state = State::Scene(0, assets.scenes[0].clone());
+    let mut sound = assets.sounds["village"];
     play_sound(
         sound.clone(),
         PlaySoundParams {
