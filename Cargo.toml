@@ -1,6 +1,6 @@
 [package]
 name = "cooking_thief"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Mifom <requestdg@gmail.com>"]
 
