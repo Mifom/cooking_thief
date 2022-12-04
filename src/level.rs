@@ -919,10 +919,13 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
                 _ => {}
             }
             body.speed.y = clamp(body.speed.y, -SPEED_STEPS, SPEED_STEPS);
-            body.position.0.x +=
-                PLAYER_MAX_SPEED * (body.speed.x as f32) / (SPEED_STEPS as f32) * dt;
-            body.position.0.y +=
-                PLAYER_MAX_SPEED * (body.speed.y as f32) / (SPEED_STEPS as f32) * dt;
+            let speed = Vec2::new(
+                body.speed.x as f32 / SPEED_STEPS as f32,
+                body.speed.y as f32 / SPEED_STEPS as f32,
+            )
+            .clamp_length_max(1.);
+            body.position.0.x += PLAYER_MAX_SPEED * speed.x * dt;
+            body.position.0.y += PLAYER_MAX_SPEED * speed.y * dt;
         });
     collide(
         level
