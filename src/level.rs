@@ -869,7 +869,7 @@ fn use_door(player: &mut Player, door: &mut Door, enemies: &Vec<Enemy>, assets: 
 }
 
 fn swap_items(item_crate: &mut ItemCrate, player: &mut Player, assets: &Assets) -> bool {
-    if item_crate.room.0 != player.body.room.0 {
+    if player.health == Health::Dead || item_crate.room.0 != player.body.room.0 {
         return false;
     }
     let diff = item_crate.position.0 - player.body.position.0;
@@ -1041,10 +1041,18 @@ pub fn update_level(level: &mut Level, screen: &Screen, assets: &Assets, dt: f32
         .crates
         .iter_mut()
         .any(|item_crate| swap_items(item_crate, &mut level.player, assets))
+        // If enemy is near don't save
+        && !level.enemies.iter().any(|enemy| {
+            let diff = enemy.body.position.0 - level.player.body.position.0;
+            let touch_distance = SLASH_LEN;
+            diff.length()
+                < enemy.body.form.direction_len(diff)
+                    + level.player.body.form.direction_len(diff)
+                    + touch_distance
+        })
     {
         *backup = level.clone();
     }
-
     if level.player.health == Health::Dead && is_key_pressed(KeyCode::R) {
         *level = backup.clone();
     }
